@@ -1,66 +1,65 @@
-# Rate Limiting Library - Go
+# Source Trust and Anti-Spoof Library - Go
 
-Create a Go library for rate limiting called 'ratelimit'.
+Create a Go library called `trustscore` for source reliability scoring and spoof detection in legal/government validation pipelines.
 
 ## Purpose
 
-A flexible, high-performance rate limiting library supporting multiple algorithms and storage backends.
+A reusable library that computes trust scores for sources and evidence records, detects source spoofing signals, and produces policy-based allow/review/block decisions.
 
 ## Features
 
-- **Algorithms**
-  - Token bucket: Smooth rate limiting with burst capacity
-  - Sliding window: Accurate request counting over time
-  - Fixed window: Simple time-based windows
-  - Leaky bucket: Constant output rate
+- **Trust Scoring**
+  - Weighted scoring based on domain reputation, authority type, freshness, and citation consistency
+  - Configurable scoring profiles by content type (news, officials, elections, court docs, templates)
+  - Confidence penalties for contradictory evidence
+  - Deterministic score explanations for auditability
 
-- **Storage Backends**
-  - In-memory: Fast, single-instance use
-  - Redis: Distributed rate limiting
-  - Interface for custom backends
+- **Anti-Spoof Detection**
+  - Domain normalization and lookalike detection
+  - TLS/certificate metadata checks (when provided by caller)
+  - URL/path anomaly heuristics for phishing-like patterns
+  - Cross-source mismatch checks (same claim, conflicting authority records)
 
-- **Configuration**
-  - Per-key rate limits
-  - Dynamic limit adjustment
-  - Configurable time windows
-  - Burst allowance settings
+- **Decision Engine**
+  - Policy thresholds for `allow`, `review`, and `block`
+  - Reason codes and human-readable explanations
+  - Override hooks for analyst-approved exceptions
+  - Support for both single-claim and batch evaluation
 
 - **Observability**
-  - Metrics export (Prometheus format)
-  - Remaining quota queries
-  - Reset time information
+  - Export scoring telemetry and decision counters
+  - Trace-friendly structured events
+  - Optional Prometheus metrics adapter
 
 ## Technical Requirements
 
-- Go 1.21+ with generics
-- Context support for cancellation
-- Thread-safe implementations
-- Zero external dependencies for core
-- Optional Redis dependency
+- Go 1.21+
+- Context-aware public APIs
+- Thread-safe internals
+- Minimal dependencies in core package
+- Optional adapters for metrics and distributed caches
 
 ## API Design
 
 ```go
-// Core interface
-type Limiter interface {
-    Allow(ctx context.Context, key string) (bool, error)
-    AllowN(ctx context.Context, key string, n int) (bool, error)
-    Remaining(ctx context.Context, key string) (int, error)
-    Reset(ctx context.Context, key string) error
+type Evaluator interface {
+    Score(ctx context.Context, req ScoreRequest) (ScoreResult, error)
+    Decide(ctx context.Context, req DecisionRequest) (DecisionResult, error)
+    BatchDecide(ctx context.Context, reqs []DecisionRequest) ([]DecisionResult, error)
 }
 
-// Configuration
-type Config struct {
-    Rate     int           // Requests per window
-    Window   time.Duration // Time window
-    Burst    int           // Burst capacity
-}
+type Decision string
+
+const (
+    DecisionAllow  Decision = "allow"
+    DecisionReview Decision = "review"
+    DecisionBlock  Decision = "block"
+)
 ```
 
 ## Testing
 
-- Table-driven tests
-- Benchmarks for each algorithm
-- Race condition tests with -race
-- Integration tests for Redis backend
-- Example tests in documentation
+- Table-driven tests for scoring and policy behavior
+- Fuzz tests for URL normalization and spoof heuristics
+- Race tests (`go test -race`) for concurrent batch scoring
+- Benchmark suite for single vs. batch throughput

@@ -34,6 +34,11 @@ struct Cli {
     #[arg(short = 'p', long, global = true)]
     project_path: Option<String>,
 
+    /// Model to use (overrides RALPH_PRD_MODEL). Supports fallback chain: 
+    /// gemini-3.1-flash -> gemini-3.1-flash-lite -> gemini-2.5-flash
+    #[arg(short = 'm', long, global = true)]
+    model: Option<String>,
+
     /// Project description (when no subcommand is used)
     #[arg(trailing_var_arg = true)]
     prompt: Vec<String>,
@@ -372,6 +377,9 @@ async fn main() -> Result<()> {
     }
     if let Some(ref path) = cli.project_path {
         config.project_path = path.clone();
+    }
+    if let Some(ref model) = cli.model {
+        config.agents.prd_model.model_name = model.clone();
     }
 
     // Initialize telemetry

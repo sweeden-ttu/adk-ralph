@@ -1,48 +1,101 @@
-# System Design: Create a Go library for
+# System Design: trustscore
 
 ## Architecture Overview
 
-Create a Go library for rate limiting called ratelimit.
-
-## Component Diagram
+`trustscore` is structured as a pure Go core with optional integration adapters for metrics and caching.
 
 ```mermaid
 flowchart TB
-    Core_Functionality[Core Functionality]
+    subgraph publicAPI [Public_API]
+        evaluator[Evaluator]
+        batchEvaluator[BatchEvaluator]
+    end
 
+    subgraph scoring [Scoring_Engine]
+        featureExtractor[FeatureExtractor]
+        weightedScorer[WeightedScorer]
+        confidenceAdjuster[ConfidenceAdjuster]
+    end
+
+    subgraph spoofing [Spoof_Detection]
+        domainNormalizer[DomainNormalizer]
+        lookalikeDetector[LookalikeDetector]
+        anomalyRules[AnomalyRules]
+    end
+
+    subgraph policy [Policy_Engine]
+        thresholdPolicy[ThresholdPolicy]
+        overridePolicy[OverridePolicy]
+        reasonCodeBuilder[ReasonCodeBuilder]
+    end
+
+    subgraph integrations [Optional_Integrations]
+        metricsHook[MetricsHook]
+        traceHook[TraceHook]
+    end
+
+    evaluator --> featureExtractor
+    featureExtractor --> weightedScorer
+    weightedScorer --> confidenceAdjuster
+    evaluator --> domainNormalizer
+    domainNormalizer --> lookalikeDetector
+    lookalikeDetector --> anomalyRules
+    confidenceAdjuster --> thresholdPolicy
+    anomalyRules --> thresholdPolicy
+    thresholdPolicy --> overridePolicy
+    overridePolicy --> reasonCodeBuilder
+    reasonCodeBuilder --> metricsHook
+    reasonCodeBuilder --> traceHook
 ```
 
-## Components
+## Core Interfaces
 
-### Core Functionality
-
-**Purpose**: As a user, I want create a go library for rate limiting called ratelimit., so that I can accomplish my goals.
-
-**Interface**:
-- // [ ] AC-001. WHEN the user runs the application, THE system SHALL create a go library for rate limiting called ratelimit.
-
-**File**: `src/core_functionality.rs`
+```go
+type Evaluator interface {
+    Score(ctx context.Context, req ScoreRequest) (ScoreResult, error)
+    Decide(ctx context.Context, req DecisionRequest) (DecisionResult, error)
+    BatchDecide(ctx context.Context, reqs []DecisionRequest) ([]DecisionResult, error)
+}
+```
 
 ## File Structure
 
 ```
-create-a-go-library-for/
-├── src/
-│   ├── main.rs
-│   └── lib.rs
-├── tests/
-├── Cargo.toml
-└── README.md
+trustscore/
+├── go.mod
+├── trustscore.go
+├── score/
+│   ├── request.go
+│   ├── result.go
+│   └── weighted.go
+├── spoof/
+│   ├── normalize.go
+│   ├── lookalike.go
+│   └── anomaly.go
+├── policy/
+│   ├── decision.go
+│   ├── thresholds.go
+│   └── reason_codes.go
+├── internal/
+│   ├── config/
+│   └── validate/
+└── tests/
+    ├── score_test.go
+    ├── spoof_test.go
+    ├── policy_test.go
+    └── benchmark_test.go
 ```
 
 ## Technology Stack
 
-- **Language**: rust
-- **Testing**: cargo test / proptest
-- **Build Tool**: cargo
+- Go 1.21+
+- Standard library-first core
+- Optional metrics integrations via adapter interfaces
 
-## Design Decisions
+## Testing Strategy
 
-- Target language: rust (detected from project or PRD)
-- Testing framework: cargo test / proptest
+- Table-driven tests for score and decision logic
+- Fuzz tests for URL/domain normalization
+- Race tests for concurrent batch evaluation
+- Benchmarks for scoring and decision throughput
 

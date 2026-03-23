@@ -2,121 +2,80 @@
 
 ## Project Overview
 
-**Project Name**: taskr
+**Project Name**: evidenced
 **Language**: Rust
 **Type**: CLI Application
 
-Taskr is a command-line task manager that helps users organize personal tasks with support for priorities, due dates, tags, and projects. Tasks are stored locally in JSON format following XDG base directory conventions.
+`evidenced` is a command-line orchestration tool for the Trustworthy AI legal/government validator project. It runs verification jobs against authoritative sources, emits pass/fail decisions, and produces provenance artifacts for downstream indexing and audit workflows.
 
 ## Glossary
 
-- **Task**: A unit of work with title, description, priority, status, and optional metadata
-- **Priority**: Task importance level (high, medium, low)
-- **Status**: Task state (pending, completed)
-- **Tag**: Custom label for categorizing tasks
-- **Project**: Grouping mechanism for related tasks
-- **Storage**: Local JSON file at `~/.taskr/tasks.json` or XDG-compliant location
+- **Claim**: Structured statement requiring verification (citation, official, election, law, document, or template)
+- **Evidence Bundle**: Matched source records and metadata supporting a decision
+- **Decision**: Verification outcome (`pass`, `fail`, `conflicting`, `insufficient_evidence`)
+- **Provenance Manifest**: Signed JSON metadata for run traceability
+- **Adapter**: Source-specific connector for authoritative datasets
 
 ## User Stories
 
-### US-001: Add Tasks
+### US-001: Run Validation Jobs
 
 **Priority**: 1
 **Status**: pending
 
-**Description**: As a user, I want to add new tasks with details, so that I can track work I need to complete.
+**Description**: As a validation engineer, I want to execute verification runs from claim files, so that I can produce trustworthy decisions at scale.
 
 **Acceptance Criteria**:
-1. WHEN a user runs `taskr add "Task title"`, THE system SHALL create a new task with pending status
-2. WHEN a user provides `--description`, THE system SHALL store the description with the task
-3. WHEN a user provides `--priority high|medium|low`, THE system SHALL set the task priority
-4. WHEN a user provides `--due YYYY-MM-DD`, THE system SHALL set the due date
-5. WHEN a user provides `--tags tag1,tag2`, THE system SHALL associate tags with the task
-6. WHEN a user provides `--project name`, THE system SHALL associate the task with a project
-7. THE system SHALL generate a unique ID for each task
-8. THE system SHALL display the created task with its ID
+1. WHEN a user runs `evidenced run --input claims.ndjson`, THE system SHALL validate each claim and emit a decision
+2. WHEN input schema is invalid, THE system SHALL reject the run with actionable errors
+3. THE system SHALL support claim types for legal/government validation
+4. THE system SHALL include machine-readable reason codes per decision
 
-### US-002: List Tasks
+### US-002: Generate Provenance Artifacts
 
 **Priority**: 1
 **Status**: pending
 
-**Description**: As a user, I want to list my tasks with filtering options, so that I can see relevant tasks.
+**Description**: As an auditor, I want signed provenance output for every run, so that decisions can be traced and reproduced.
 
 **Acceptance Criteria**:
-1. WHEN a user runs `taskr list`, THE system SHALL display all pending tasks
-2. WHEN a user provides `--all`, THE system SHALL display both pending and completed tasks
-3. WHEN a user provides `--status pending|completed`, THE system SHALL filter by status
-4. WHEN a user provides `--priority high|medium|low`, THE system SHALL filter by priority
-5. WHEN a user provides `--project name`, THE system SHALL filter by project
-6. WHEN a user provides `--tag name`, THE system SHALL filter by tag
-7. WHEN a user provides `--sort priority|due|created`, THE system SHALL sort accordingly
-8. THE system SHALL display tasks with colored output based on priority
+1. THE system SHALL write run metadata and item-level evidence to JSON artifacts
+2. THE system SHALL include source URLs, dataset identifiers, retrieval timestamps, and evidence hashes
+3. THE system SHALL generate a signed provenance manifest per run
+4. THE system SHALL include tool version and configuration fingerprint
 
-### US-003: Complete Tasks
-
-**Priority**: 1
-**Status**: pending
-
-**Description**: As a user, I want to mark tasks as complete, so that I can track my progress.
-
-**Acceptance Criteria**:
-1. WHEN a user runs `taskr complete <id>`, THE system SHALL mark the task as completed
-2. WHEN the task ID does not exist, THE system SHALL display an error message
-3. WHEN the task is already completed, THE system SHALL inform the user
-4. THE system SHALL record the completion timestamp
-
-### US-004: Delete Tasks
+### US-003: Resume Interrupted Runs
 
 **Priority**: 2
 **Status**: pending
 
-**Description**: As a user, I want to delete tasks, so that I can remove items I no longer need.
+**Description**: As an operator, I want checkpoint and resume support, so that long runs recover safely after failures.
 
 **Acceptance Criteria**:
-1. WHEN a user runs `taskr delete <id>`, THE system SHALL remove the task
-2. WHEN the task ID does not exist, THE system SHALL display an error message
-3. WHEN a user provides `--force`, THE system SHALL skip confirmation
-4. WITHOUT `--force`, THE system SHALL prompt for confirmation
+1. WHEN a run is interrupted, THE system SHALL persist a checkpoint
+2. WHEN a user runs `evidenced resume <run-id>`, THE system SHALL continue remaining claims only
+3. THE system SHALL preserve deterministic output ordering after resume
 
-### US-005: Edit Tasks
+### US-004: Adapter and Cache Controls
 
 **Priority**: 2
 **Status**: pending
 
-**Description**: As a user, I want to edit existing tasks, so that I can update details as needed.
+**Description**: As a platform engineer, I want configurable adapters and cache policies, so that source verification stays fast and reliable.
 
 **Acceptance Criteria**:
-1. WHEN a user runs `taskr edit <id>`, THE system SHALL allow updating task fields
-2. WHEN a user provides `--title "new title"`, THE system SHALL update the title
-3. WHEN a user provides `--description "new desc"`, THE system SHALL update the description
-4. WHEN a user provides `--priority new_priority`, THE system SHALL update the priority
-5. WHEN a user provides `--due new_date`, THE system SHALL update the due date
-6. WHEN the task ID does not exist, THE system SHALL display an error message
+1. THE system SHALL load adapter and cache settings from config files
+2. THE system SHALL cache adapter responses with TTL and deterministic keys
+3. THE system SHALL support offline replay from source snapshots
 
-### US-006: Export Tasks
+### US-005: Export and Reporting
 
 **Priority**: 3
 **Status**: pending
 
-**Description**: As a user, I want to export my tasks, so that I can use them in other tools.
+**Description**: As a project stakeholder, I want decision summaries in common formats, so that experiment and review pipelines can consume run outputs.
 
 **Acceptance Criteria**:
-1. WHEN a user runs `taskr export --format json`, THE system SHALL output tasks as JSON
-2. WHEN a user runs `taskr export --format csv`, THE system SHALL output tasks as CSV
-3. WHEN a user provides `--output file.json`, THE system SHALL write to the specified file
-4. WITHOUT `--output`, THE system SHALL write to stdout
-
-### US-007: Data Persistence
-
-**Priority**: 1
-**Status**: pending
-
-**Description**: As a user, I want my tasks to persist between sessions, so that I don't lose my data.
-
-**Acceptance Criteria**:
-1. THE system SHALL store tasks in `$XDG_DATA_HOME/taskr/tasks.json` if XDG is set
-2. THE system SHALL fall back to `~/.taskr/tasks.json` if XDG is not set
-3. THE system SHALL create the directory if it does not exist
-4. THE system SHALL handle concurrent access safely
-5. THE system SHALL create backups before destructive operations
+1. WHEN a user runs `evidenced report --format json|csv`, THE system SHALL export decision summaries
+2. THE system SHALL include counts by decision state and content type
+3. THE system SHALL include run-level latency and error metrics

@@ -1,25 +1,138 @@
 {
-  "project": "Create a Go library for",
-  "language": "rust",
-  "phases": [],
-  "tasks": [
+  "project": "trustscore",
+  "language": "go",
+  "phases": [
     {
-      "id": "TASK-001",
-      "title": "Core Functionality",
-      "description": "As a user, I want create a go library for rate limiting called ratelimit., so that I can accomplish my goals.",
-      "priority": 1,
-      "status": "completed",
-      "dependencies": [],
-      "user_story_id": "US-001",
-      "estimated_complexity": "low",
-      "files_created": [],
-      "files_modified": [],
-      "commit_hash": null,
-      "attempts": 0,
-      "notes": ""
+      "id": "phase-1",
+      "name": "Core Scoring",
+      "sprints": [
+        {
+          "id": "sprint-1",
+          "name": "Scoring Foundation",
+          "tasks": [
+            {
+              "id": "TASK-001",
+              "title": "Initialize library and core domain models",
+              "description": "Create module layout and define ScoreRequest, ScoreResult, and DecisionResult models.",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": [],
+              "user_story_id": "US-001",
+              "estimated_complexity": "low"
+            },
+            {
+              "id": "TASK-002",
+              "title": "Implement weighted trust scorer",
+              "description": "Build scoring engine with configurable weights and deterministic factor breakdown.",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-001"],
+              "user_story_id": "US-001",
+              "estimated_complexity": "medium"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Spoof and Policy",
+      "sprints": [
+        {
+          "id": "sprint-2",
+          "name": "Spoof Detection",
+          "tasks": [
+            {
+              "id": "TASK-003",
+              "title": "Implement domain normalization and lookalike checks",
+              "description": "Add canonicalization and similarity heuristics for spoof risk detection.",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-001"],
+              "user_story_id": "US-002",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-004",
+              "title": "Implement URL/path anomaly heuristics",
+              "description": "Detect suspicious URL structures and attach spoof reason codes.",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-003"],
+              "user_story_id": "US-002",
+              "estimated_complexity": "medium"
+            }
+          ]
+        },
+        {
+          "id": "sprint-3",
+          "name": "Decision Engine",
+          "tasks": [
+            {
+              "id": "TASK-005",
+              "title": "Implement threshold policy engine",
+              "description": "Map scores and spoof signals to allow/review/block decisions.",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-002", "TASK-004"],
+              "user_story_id": "US-003",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-006",
+              "title": "Implement override and reason-code framework",
+              "description": "Support approved exceptions while preserving explainable reason output.",
+              "priority": 2,
+              "status": "pending",
+              "dependencies": ["TASK-005"],
+              "user_story_id": "US-003",
+              "estimated_complexity": "low"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Batch and Observability",
+      "sprints": [
+        {
+          "id": "sprint-4",
+          "name": "Scale and Quality",
+          "tasks": [
+            {
+              "id": "TASK-007",
+              "title": "Implement batch decision API",
+              "description": "Add concurrent-safe batch evaluation with per-item decision results.",
+              "priority": 2,
+              "status": "pending",
+              "dependencies": ["TASK-005"],
+              "user_story_id": "US-004",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-008",
+              "title": "Add metrics and trace hooks",
+              "description": "Provide optional integration hooks for decision counters and tracing.",
+              "priority": 3,
+              "status": "pending",
+              "dependencies": ["TASK-007"],
+              "user_story_id": "US-005",
+              "estimated_complexity": "low"
+            },
+            {
+              "id": "TASK-009",
+              "title": "Add tests, fuzzing, and benchmarks",
+              "description": "Cover scoring, spoof detection, and policy behavior under race and load conditions.",
+              "priority": 2,
+              "status": "pending",
+              "dependencies": ["TASK-006", "TASK-007"],
+              "user_story_id": "US-005",
+              "estimated_complexity": "medium"
+            }
+          ]
+        }
+      ]
     }
-  ],
-  "version": "1.0",
-  "created_at": "2026-01-11T15:07:47.509445+00:00",
-  "updated_at": "2026-01-11T15:07:47.593742+00:00"
+  ]
 }

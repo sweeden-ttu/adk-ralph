@@ -1,50 +1,57 @@
-# Bookstore REST API - Python
+# Citation and Official Record Verification API - Python
 
-Create a REST API for a bookstore in Python using FastAPI.
+Create a FastAPI service in Python called `verdict-api`.
 
 ## Purpose
 
-A backend service for managing a bookstore's inventory, customer orders, and user authentication.
+A verification API that receives legal/government claims and citations, validates them against authoritative datasets (Texas Open Data, Texas Capitol Data, and configured official sources), and returns pass/fail decisions with provenance.
 
 ## Features
 
-- **Book Management**
-  - CRUD operations for books (title, author, ISBN, price, stock quantity)
-  - Search books by title, author, or ISBN
-  - Filter by category, price range, availability
-  - Bulk import books from CSV
+- **Verification Endpoints**
+  - `POST /verify/citation` for legal citation checks
+  - `POST /verify/official` for elected official and term validation
+  - `POST /verify/election` for race, candidate, and result checks
+  - `POST /verify/document` for court/legal document metadata verification
+  - Batch verification endpoint for bulk claim submissions
 
-- **User Management**
-  - User registration with email verification
-  - JWT-based authentication
-  - Role-based access (admin, staff, customer)
-  - Password reset functionality
+- **Decisioning and Provenance**
+  - Standardized decision states: `verified`, `unverified`, `conflicting`, `insufficient_evidence`
+  - Return supporting source records, matched fields, and confidence scores
+  - Include provenance metadata (source URL, dataset ID, retrieval time, evidence hash)
+  - Explainable failure reasons with remediation hints
 
-- **Order Processing**
-  - Shopping cart management
-  - Order creation and tracking
-  - Order history for users
-  - Stock validation on order
+- **Security and Governance**
+  - API key authentication and role-based scopes
+  - Request schema enforcement and input sanitization
+  - Audit log for every decision request
+  - Signed response option for downstream trust checks
+
+- **Operations and Observability**
+  - Health and readiness endpoints
+  - OpenTelemetry traces and structured logs
+  - Configurable rate limits per client
+  - Async job queue support for large batch runs
 
 ## Technical Requirements
 
-- FastAPI for the web framework
-- SQLAlchemy with SQLite (dev) / PostgreSQL (prod)
-- Pydantic for request/response validation
-- Alembic for database migrations
-- python-jose for JWT handling
-- Passlib for password hashing
+- FastAPI + Pydantic v2
+- SQLAlchemy for audit/provenance persistence
+- Redis for cache and background job coordination
+- HTTP client layer with retries/backoff for external datasets
+- OpenAPI 3.1 documentation with reusable schemas
+- Container-friendly configuration via environment variables
 
 ## API Design
 
-- RESTful endpoints following OpenAPI 3.0
-- Pagination for list endpoints
-- Proper HTTP status codes
-- Comprehensive error responses
+- Versioned routes (`/v1/...`)
+- RFC 7807 problem detail errors
+- Idempotency keys for batch submissions
+- Cursor-based pagination for decision history
 
 ## Testing
 
-- pytest for unit and integration tests
-- pytest-asyncio for async tests
-- Factory Boy for test fixtures
-- Coverage target: 80%
+- `pytest` for unit and integration tests
+- Async endpoint tests with `httpx`
+- Contract tests for source-adapter responses
+- Security tests for auth, input validation, and rate-limit behavior

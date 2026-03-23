@@ -1,40 +1,49 @@
-# CLI Task Manager - Rust
+# Evidence Validation Orchestrator CLI - Rust
 
-Create a CLI task manager in Rust called 'taskr'.
+Create a Rust CLI tool called `evidenced` for operating the Trustworthy AI legal/government content validation pipeline.
 
 ## Purpose
 
-A command-line tool for managing personal tasks with local storage, supporting priorities, due dates, and filtering.
+A command-line orchestrator that validates extracted claims and citations against authoritative sources, generates provenance evidence bundles, and prepares datasets for downstream RAG indexing.
 
 ## Features
 
-- **Task Management**
-  - Add tasks with title, description, priority (high/medium/low), and optional due date
-  - List tasks with filtering by status (pending/completed) and priority
-  - Mark tasks as complete
-  - Delete tasks by ID
-  - Edit existing tasks
+- **Validation Runs**
+  - Run validation jobs from JSON or NDJSON claim input files
+  - Support content types: legal news, judges, officials, elections, laws, court documents, templates
+  - Verify required metadata fields (source URL, publication date, jurisdiction, citation format)
+  - Route each item to pass/fail with machine-readable reasons
 
-- **Organization**
-  - Tag tasks with custom labels
-  - Group tasks by project
-  - Sort by priority, due date, or creation date
+- **Source Adapters**
+  - Pull reference records from configured source adapters
+  - Include adapters for Texas Open Data and Texas Capitol Data endpoints
+  - Cache source responses locally with TTL and deterministic cache keys
+  - Support offline replay mode from snapshot files for reproducible testing
 
-- **User Experience**
-  - Colored terminal output for priorities and status
-  - Interactive mode for bulk operations
-  - Export tasks to JSON or CSV
+- **Evidence and Provenance**
+  - Generate evidence bundles containing matched record IDs, snippets, timestamps, and confidence
+  - Emit signed provenance manifests (JSON) for each run
+  - Export pass/fail summaries as JSON and CSV
+  - Include explainability fields describing why each claim passed or failed
+
+- **Operations**
+  - Dry-run mode for schema and configuration checks only
+  - Resume interrupted runs using checkpoint files
+  - Progress display and structured logs with correlation IDs
+  - Configurable fail-fast or continue-on-error behavior
 
 ## Technical Requirements
 
-- Use `clap` for argument parsing with derive macros
-- Use `serde` for JSON serialization
-- Use `colored` for terminal colors
-- Store tasks in `~/.taskr/tasks.json`
-- Support XDG base directory specification
+- Use `clap` (derive) for subcommands and flags
+- Use `serde`/`serde_json` for serialization
+- Use `reqwest` + `tokio` for async adapter calls
+- Use `tracing` + `tracing-subscriber` for structured logging
+- Store run artifacts under XDG data dir (fallback `~/.evidenced/`)
+- Support config file loading from `yaml` and environment overrides
 
 ## Testing
 
-- Unit tests for task operations
-- Integration tests for CLI commands
-- Property tests for serialization round-trips
+- Unit tests for validation rules and provenance manifest generation
+- Integration tests for CLI commands and checkpoint resume behavior
+- Contract tests for source adapter response mapping
+- Property tests for deterministic artifact output

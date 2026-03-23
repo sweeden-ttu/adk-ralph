@@ -1,188 +1,155 @@
-# System Design: taskr
+# System Design: evidenced
 
 ## Architecture Overview
 
-Taskr follows a simple layered architecture with clear separation between CLI parsing, business logic, and data persistence.
+`evidenced` uses a pipeline-oriented CLI architecture with deterministic processing and artifact output for verification traceability.
 
 ```mermaid
 flowchart TB
-    subgraph CLI["CLI Layer"]
-        CLAP[Clap Parser]
-        CMD[Command Handlers]
+    subgraph cliLayer [CLI_Layer]
+        clapParser[ClapParser]
+        commandHandlers[CommandHandlers]
     end
-    
-    subgraph Core["Core Layer"]
-        TASK[Task Manager]
-        FILTER[Filter Engine]
-        SORT[Sort Engine]
+
+    subgraph orchestration [Orchestration]
+        runCoordinator[RunCoordinator]
+        checkpointManager[CheckpointManager]
+        policyEngine[PolicyEngine]
     end
-    
-    subgraph Data["Data Layer"]
-        STORE[Storage Service]
-        JSON[JSON Serializer]
-        FS[File System]
+
+    subgraph validation [Validation]
+        claimValidator[ClaimValidator]
+        adapterRegistry[AdapterRegistry]
+        decisionEngine[DecisionEngine]
     end
-    
-    subgraph Output["Output Layer"]
-        FMT[Formatter]
-        COLOR[Colored Output]
-        EXPORT[Export Handlers]
+
+    subgraph artifacts [Artifacts]
+        evidenceWriter[EvidenceWriter]
+        manifestSigner[ManifestSigner]
+        reportExporter[ReportExporter]
     end
-    
-    CLAP --> CMD
-    CMD --> TASK
-    TASK --> FILTER
-    TASK --> SORT
-    TASK --> STORE
-    STORE --> JSON
-    JSON --> FS
-    CMD --> FMT
-    FMT --> COLOR
-    CMD --> EXPORT
+
+    subgraph storage [Storage]
+        artifactStore[ArtifactStore]
+        cacheStore[CacheStore]
+    end
+
+    clapParser --> commandHandlers
+    commandHandlers --> runCoordinator
+    runCoordinator --> claimValidator
+    runCoordinator --> checkpointManager
+    claimValidator --> adapterRegistry
+    adapterRegistry --> decisionEngine
+    decisionEngine --> policyEngine
+    policyEngine --> evidenceWriter
+    evidenceWriter --> manifestSigner
+    manifestSigner --> artifactStore
+    reportExporter --> artifactStore
+    adapterRegistry --> cacheStore
 ```
 
 ## Component Diagram
 
 ```mermaid
 classDiagram
-    class Task {
-        +String id
-        +String title
-        +Option~String~ description
-        +Priority priority
-        +Status status
-        +Option~NaiveDate~ due_date
-        +Vec~String~ tags
-        +Option~String~ project
-        +DateTime created_at
-        +Option~DateTime~ completed_at
+    class Claim {
+        +string claim_id
+        +string claim_type
+        +string jurisdiction
+        +string text
+        +map metadata
     }
-    
-    class Priority {
-        <<enumeration>>
-        High
-        Medium
-        Low
+
+    class DecisionResult {
+        +string claim_id
+        +string decision
+        +float confidence
+        +string reason_code
+        +[]EvidenceRef evidence
     }
-    
-    class Status {
-        <<enumeration>>
-        Pending
-        Completed
+
+    class EvidenceRef {
+        +string source_url
+        +string dataset_id
+        +string record_id
+        +string retrieved_at
+        +string evidence_hash
     }
-    
-    class TaskManager {
-        +add(task: Task) Result~Task~
-        +list(filter: Filter) Vec~Task~
-        +complete(id: String) Result~Task~
-        +delete(id: String) Result~()~
-        +edit(id: String, updates: TaskUpdate) Result~Task~
+
+    class RunCoordinator {
+        +run(inputPath) RunSummary
+        +resume(runId) RunSummary
     }
-    
-    class Storage {
-        +load() Result~Vec~Task~~
-        +save(tasks: Vec~Task~) Result~()~
-        +backup() Result~()~
+
+    class Adapter {
+        <<interface>>
+        +fetch(query) SourceRecords
     }
-    
-    Task --> Priority
-    Task --> Status
-    TaskManager --> Task
-    TaskManager --> Storage
+
+    class ManifestSigner {
+        +sign(manifest) SignedManifest
+    }
+
+    RunCoordinator --> Claim
+    RunCoordinator --> DecisionResult
+    DecisionResult --> EvidenceRef
+    RunCoordinator --> Adapter
+    RunCoordinator --> ManifestSigner
 ```
 
 ## File Structure
 
 ```
-taskr/
+evidenced/
 ├── Cargo.toml
 ├── src/
-│   ├── main.rs           # Entry point, CLI setup
-│   ├── lib.rs            # Library exports
-│   ├── cli.rs            # Clap command definitions
-│   ├── commands/
+│   ├── main.rs
+│   ├── cli.rs
+│   ├── config.rs
+│   ├── orchestrator/
 │   │   ├── mod.rs
-│   │   ├── add.rs        # Add command handler
-│   │   ├── list.rs       # List command handler
-│   │   ├── complete.rs   # Complete command handler
-│   │   ├── delete.rs     # Delete command handler
-│   │   ├── edit.rs       # Edit command handler
-│   │   └── export.rs     # Export command handler
-│   ├── task.rs           # Task model and operations
-│   ├── storage.rs        # File-based persistence
-│   ├── filter.rs         # Filtering logic
-│   ├── format.rs         # Output formatting
-│   └── error.rs          # Error types
+│   │   ├── run.rs
+│   │   └── checkpoint.rs
+│   ├── validation/
+│   │   ├── mod.rs
+│   │   ├── claim.rs
+│   │   ├── decision.rs
+│   │   └── policy.rs
+│   ├── adapters/
+│   │   ├── mod.rs
+│   │   ├── texas_open_data.rs
+│   │   └── texas_capitol_data.rs
+│   ├── artifacts/
+│   │   ├── evidence.rs
+│   │   ├── manifest.rs
+│   │   └── report.rs
+│   └── storage/
+│       ├── artifact_store.rs
+│       └── cache_store.rs
 └── tests/
-    ├── cli_tests.rs      # CLI integration tests
-    ├── task_tests.rs     # Task unit tests
-    └── storage_tests.rs  # Storage tests
+    ├── cli_integration.rs
+    ├── policy_tests.rs
+    └── adapter_contracts.rs
 ```
 
 ## Technology Stack
 
-- **Language**: Rust 2021 edition
-- **CLI Parsing**: clap 4.x with derive macros
-- **Serialization**: serde + serde_json
-- **Terminal Colors**: colored
-- **Date/Time**: chrono
-- **ID Generation**: uuid
-- **Directories**: dirs (XDG support)
-
-## Data Models
-
-### Task (JSON Schema)
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "Implement feature X",
-  "description": "Add support for feature X with tests",
-  "priority": "high",
-  "status": "pending",
-  "due_date": "2024-12-31",
-  "tags": ["work", "urgent"],
-  "project": "my-project",
-  "created_at": "2024-01-15T10:30:00Z",
-  "completed_at": null
-}
-```
-
-### Storage File (tasks.json)
-
-```json
-{
-  "version": 1,
-  "tasks": [
-    { /* Task objects */ }
-  ],
-  "metadata": {
-    "last_modified": "2024-01-15T10:30:00Z"
-  }
-}
-```
+- **Language**: Rust (stable)
+- **CLI**: `clap`
+- **Async HTTP**: `reqwest` + `tokio`
+- **Serialization**: `serde`, `serde_json`
+- **Logging**: `tracing`
+- **Config**: `serde_yaml` + env overrides
 
 ## Error Handling
 
-- Use `thiserror` for error type definitions
-- Provide user-friendly error messages
-- Exit with appropriate codes (0 success, 1 error)
-- Log errors to stderr, output to stdout
+- Strongly typed error categories (`InputError`, `AdapterError`, `DecisionError`, `ArtifactError`)
+- Partial-failure tracking for continue-on-error runs
+- Structured stderr diagnostics with correlation IDs
 
 ## Testing Strategy
 
-### Unit Tests
-- Task creation and validation
-- Filter matching logic
-- Sort comparisons
-- Date parsing
-
-### Integration Tests
-- Full CLI command execution
-- File I/O operations
-- Error scenarios
-
-### Property Tests
-- JSON serialization round-trips
-- Filter combinations
-- Sort stability
+- Unit tests for decision/policy logic
+- Integration tests for command flows (`run`, `resume`, `report`)
+- Contract tests for adapter mappings
+- Property tests for deterministic artifact generation

@@ -92,11 +92,10 @@ impl FromStr for DebugLevel {
             "normal" | "default" | "n" => Ok(DebugLevel::Normal),
             "verbose" | "v" => Ok(DebugLevel::Verbose),
             "debug" | "d" | "trace" => Ok(DebugLevel::Debug),
-            _ => Err(ValidationError::new(
-                "debug_level",
-                format!("Invalid debug level '{}'", s),
-            )
-            .with_suggestion("Valid levels: minimal, normal, verbose, debug")),
+            _ => Err(
+                ValidationError::new("debug_level", format!("Invalid debug level '{}'", s))
+                    .with_suggestion("Valid levels: minimal, normal, verbose, debug"),
+            ),
         }
     }
 }
@@ -148,6 +147,9 @@ pub struct ModelConfig {
     pub provider: String,
     /// Specific model name (e.g., "claude-opus-4-5", "gpt-4o")
     pub model_name: String,
+    /// Fallback model names to try if primary model fails
+    #[serde(default)]
+    pub fallback_model_names: Vec<String>,
     /// Whether thinking/reasoning mode is enabled
     #[serde(default)]
     pub thinking_enabled: bool,
@@ -175,6 +177,7 @@ impl Default for ModelConfig {
             thinking_enabled: false,
             max_tokens: default_max_tokens(),
             temperature: default_temperature(),
+            fallback_model_names: vec![],
         }
     }
 }
@@ -207,6 +210,18 @@ impl ModelConfig {
         self
     }
 
+    /// Add a fallback model to try if primary model fails.
+    pub fn with_fallback(mut self, fallback_model: impl Into<String>) -> Self {
+        self.fallback_model_names.push(fallback_model.into());
+        self
+    }
+
+    /// Set fallback models (replaces any existing fallbacks).
+    pub fn fallback_models(mut self, fallbacks: Vec<String>) -> Self {
+        self.fallback_model_names = fallbacks;
+        self
+    }
+
     /// Validate the model config.
     ///
     /// Checks:
@@ -217,8 +232,10 @@ impl ModelConfig {
     pub fn validate(&self) -> Result<(), ValidationError> {
         // Validate provider
         if self.provider.is_empty() {
-            return Err(ValidationError::new("provider", "Model provider cannot be empty")
-                .with_suggestion(format!("Use one of: {:?}", SUPPORTED_PROVIDERS)));
+            return Err(
+                ValidationError::new("provider", "Model provider cannot be empty")
+                    .with_suggestion(format!("Use one of: {:?}", SUPPORTED_PROVIDERS)),
+            );
         }
 
         let provider_lower = self.provider.to_lowercase();
@@ -232,8 +249,11 @@ impl ModelConfig {
 
         // Validate model name
         if self.model_name.is_empty() {
-            return Err(ValidationError::new("model_name", "Model name cannot be empty")
-                .with_suggestion("Specify a valid model name like 'claude-sonnet-4-20250514' or 'gpt-4o'"));
+            return Err(
+                ValidationError::new("model_name", "Model name cannot be empty").with_suggestion(
+                    "Specify a valid model name like 'claude-sonnet-4-20250514' or 'gpt-4o'",
+                ),
+            );
         }
 
         // Check for obviously invalid model names (basic sanity check)
@@ -256,14 +276,19 @@ impl ModelConfig {
 
         // Validate max_tokens
         if self.max_tokens == 0 {
-            return Err(ValidationError::new("max_tokens", "Max tokens must be greater than 0")
-                .with_suggestion("Set max_tokens to at least 1 (recommended: 4096 or higher)"));
+            return Err(
+                ValidationError::new("max_tokens", "Max tokens must be greater than 0")
+                    .with_suggestion("Set max_tokens to at least 1 (recommended: 4096 or higher)"),
+            );
         }
 
         if self.max_tokens > MAX_TOKENS_LIMIT {
             return Err(ValidationError::new(
                 "max_tokens",
-                format!("Max tokens {} exceeds limit of {}", self.max_tokens, MAX_TOKENS_LIMIT),
+                format!(
+                    "Max tokens {} exceeds limit of {}",
+                    self.max_tokens, MAX_TOKENS_LIMIT
+                ),
             )
             .with_suggestion(format!("Use a value between 1 and {}", MAX_TOKENS_LIMIT)));
         }
@@ -304,13 +329,14 @@ pub struct AgentModelConfig {
 impl Default for AgentModelConfig {
     fn default() -> Self {
         Self {
-            // PRD Agent: Use Gemini 3.1 Pro for requirements generation
-            prd_model: ModelConfig::new("gemini", "gemini-3.1-pro-preview"),
+            // PRD Agent: Use Gemini with fallback chain
+            // Try: gemini-3.1-pro-preview -> gemini-3.1-flash-preview -> gemini-2.5-flash
+            prd_model: ModelConfig::new("gemini", "gemini-3.1-pro-preview")
+                .with_fallback("gemini-3.1-flash-preview")
+                .with_fallback("gemini-2.5-flash"),
             // Architect Agent: Use Gemini 3 Pro for design decisions
             architect_model: ModelConfig::new("gemini", "gemini-3-pro-preview"),
             // Ralph Loop Agent: Use Gemini 2.5 Flash for implementation
-            // Note: Gemini 3 models require thought_signature support for tool calls,
-            // which adk-rust v0.3.2 does not yet handle. Use 2.5 Flash until upstream support lands.
             ralph_model: ModelConfig::new("gemini", "gemini-2.5-flash"),
         }
     }
@@ -370,27 +396,21 @@ impl AgentModelConfig {
 
     /// Validate all model configs.
     pub fn validate(&self) -> Result<(), ValidationError> {
-        self.prd_model
-            .validate()
-            .map_err(|e| ValidationError::new(
-                format!("agents.prd_model.{}", e.field),
-                e.message,
-            ).with_suggestion(e.suggestion.unwrap_or_default()))?;
-        
-        self.architect_model
-            .validate()
-            .map_err(|e| ValidationError::new(
-                format!("agents.architect_model.{}", e.field),
-                e.message,
-            ).with_suggestion(e.suggestion.unwrap_or_default()))?;
-        
-        self.ralph_model
-            .validate()
-            .map_err(|e| ValidationError::new(
-                format!("agents.ralph_model.{}", e.field),
-                e.message,
-            ).with_suggestion(e.suggestion.unwrap_or_default()))?;
-        
+        self.prd_model.validate().map_err(|e| {
+            ValidationError::new(format!("agents.prd_model.{}", e.field), e.message)
+                .with_suggestion(e.suggestion.unwrap_or_default())
+        })?;
+
+        self.architect_model.validate().map_err(|e| {
+            ValidationError::new(format!("agents.architect_model.{}", e.field), e.message)
+                .with_suggestion(e.suggestion.unwrap_or_default())
+        })?;
+
+        self.ralph_model.validate().map_err(|e| {
+            ValidationError::new(format!("agents.ralph_model.{}", e.field), e.message)
+                .with_suggestion(e.suggestion.unwrap_or_default())
+        })?;
+
         Ok(())
     }
 }
@@ -484,11 +504,10 @@ impl TelemetryConfig {
 
         // Validate service name
         if self.service_name.is_empty() {
-            return Err(ValidationError::new(
-                "service_name",
-                "Service name cannot be empty",
-            )
-            .with_suggestion("Set RALPH_SERVICE_NAME or use default 'ralph'"));
+            return Err(
+                ValidationError::new("service_name", "Service name cannot be empty")
+                    .with_suggestion("Set RALPH_SERVICE_NAME or use default 'ralph'"),
+            );
         }
 
         // Validate OTLP endpoint if provided
@@ -505,7 +524,10 @@ impl TelemetryConfig {
             if !endpoint.starts_with("http://") && !endpoint.starts_with("https://") {
                 return Err(ValidationError::new(
                     "otlp_endpoint",
-                    format!("OTLP endpoint '{}' must start with http:// or https://", endpoint),
+                    format!(
+                        "OTLP endpoint '{}' must start with http:// or https://",
+                        endpoint
+                    ),
                 )
                 .with_suggestion("Use a valid URL like 'http://localhost:4317'"));
             }
@@ -739,10 +761,7 @@ impl RalphConfig {
                     self.max_task_retries, MAX_RETRIES_LIMIT
                 ),
             )
-            .with_suggestion(format!(
-                "Use a value between 1 and {}",
-                MAX_RETRIES_LIMIT
-            )));
+            .with_suggestion(format!("Use a value between 1 and {}", MAX_RETRIES_LIMIT)));
         }
 
         // Validate paths
@@ -776,17 +795,19 @@ impl RalphConfig {
 /// - Path doesn't contain invalid characters for the OS
 fn validate_path(field: &str, path: &str) -> Result<(), ValidationError> {
     if path.is_empty() {
-        return Err(ValidationError::new(field, format!("{} cannot be empty", field))
-            .with_suggestion(format!("Set RALPH_{} to a valid file path", field.to_uppercase())));
+        return Err(
+            ValidationError::new(field, format!("{} cannot be empty", field)).with_suggestion(
+                format!("Set RALPH_{} to a valid file path", field.to_uppercase()),
+            ),
+        );
     }
 
     // Check for null bytes (invalid in all paths)
     if path.contains('\0') {
-        return Err(ValidationError::new(
-            field,
-            format!("{} contains invalid null byte", field),
-        )
-        .with_suggestion("Remove null characters from the path"));
+        return Err(
+            ValidationError::new(field, format!("{} contains invalid null byte", field))
+                .with_suggestion("Remove null characters from the path"),
+        );
     }
 
     // Check for control characters
@@ -809,17 +830,16 @@ fn validate_path(field: &str, path: &str) -> Result<(), ValidationError> {
 
     // Validate path syntax using std::path
     let path_obj = Path::new(path);
-    
+
     // Check for empty components (e.g., "foo//bar")
     // This is a warning-level issue, not an error, so we allow it
-    
+
     // Check that the path has at least one component
     if path_obj.components().next().is_none() && path != "." {
-        return Err(ValidationError::new(
-            field,
-            format!("{} is not a valid path", field),
-        )
-        .with_suggestion("Provide a valid relative or absolute path"));
+        return Err(
+            ValidationError::new(field, format!("{} is not a valid path", field))
+                .with_suggestion("Provide a valid relative or absolute path"),
+        );
     }
 
     Ok(())
@@ -944,24 +964,24 @@ mod tests {
     #[test]
     fn test_model_config_temperature_validation() {
         let mut config = ModelConfig::default();
-        
+
         // Valid temperatures
         config.temperature = 0.0;
         assert!(config.validate().is_ok());
-        
+
         config.temperature = 2.0;
         assert!(config.validate().is_ok());
-        
+
         // Invalid temperatures
         config.temperature = -0.1;
         assert!(config.validate().is_err());
-        
+
         config.temperature = 2.1;
         assert!(config.validate().is_err());
-        
+
         config.temperature = f32::NAN;
         assert!(config.validate().is_err());
-        
+
         config.temperature = f32::INFINITY;
         assert!(config.validate().is_err());
     }
@@ -1053,9 +1073,7 @@ mod tests {
         assert!(result.is_err());
 
         // Valid paths
-        let result = RalphConfig::builder()
-            .prd_path("./docs/prd.md")
-            .build();
+        let result = RalphConfig::builder().prd_path("./docs/prd.md").build();
         assert!(result.is_ok());
     }
 
@@ -1092,34 +1110,45 @@ mod tests {
         let err = ValidationError::new("field", "message");
         assert_eq!(err.to_string(), "field: message");
 
-        let err = ValidationError::new("field", "message")
-            .with_suggestion("try this");
+        let err = ValidationError::new("field", "message").with_suggestion("try this");
         assert_eq!(err.to_string(), "field: message. try this");
     }
 
     #[test]
     fn test_debug_level_parsing() {
         // Valid levels
-        assert_eq!("minimal".parse::<DebugLevel>().unwrap(), DebugLevel::Minimal);
+        assert_eq!(
+            "minimal".parse::<DebugLevel>().unwrap(),
+            DebugLevel::Minimal
+        );
         assert_eq!("min".parse::<DebugLevel>().unwrap(), DebugLevel::Minimal);
         assert_eq!("quiet".parse::<DebugLevel>().unwrap(), DebugLevel::Minimal);
         assert_eq!("q".parse::<DebugLevel>().unwrap(), DebugLevel::Minimal);
-        
+
         assert_eq!("normal".parse::<DebugLevel>().unwrap(), DebugLevel::Normal);
         assert_eq!("default".parse::<DebugLevel>().unwrap(), DebugLevel::Normal);
         assert_eq!("n".parse::<DebugLevel>().unwrap(), DebugLevel::Normal);
-        
-        assert_eq!("verbose".parse::<DebugLevel>().unwrap(), DebugLevel::Verbose);
+
+        assert_eq!(
+            "verbose".parse::<DebugLevel>().unwrap(),
+            DebugLevel::Verbose
+        );
         assert_eq!("v".parse::<DebugLevel>().unwrap(), DebugLevel::Verbose);
-        
+
         assert_eq!("debug".parse::<DebugLevel>().unwrap(), DebugLevel::Debug);
         assert_eq!("d".parse::<DebugLevel>().unwrap(), DebugLevel::Debug);
         assert_eq!("trace".parse::<DebugLevel>().unwrap(), DebugLevel::Debug);
-        
+
         // Case insensitive
-        assert_eq!("MINIMAL".parse::<DebugLevel>().unwrap(), DebugLevel::Minimal);
-        assert_eq!("Verbose".parse::<DebugLevel>().unwrap(), DebugLevel::Verbose);
-        
+        assert_eq!(
+            "MINIMAL".parse::<DebugLevel>().unwrap(),
+            DebugLevel::Minimal
+        );
+        assert_eq!(
+            "Verbose".parse::<DebugLevel>().unwrap(),
+            DebugLevel::Verbose
+        );
+
         // Invalid
         assert!("invalid".parse::<DebugLevel>().is_err());
     }
@@ -1139,19 +1168,19 @@ mod tests {
         assert!(!DebugLevel::Minimal.is_normal());
         assert!(!DebugLevel::Minimal.is_verbose());
         assert!(!DebugLevel::Minimal.is_debug());
-        
+
         // Normal
         assert!(!DebugLevel::Normal.is_minimal());
         assert!(DebugLevel::Normal.is_normal());
         assert!(!DebugLevel::Normal.is_verbose());
         assert!(!DebugLevel::Normal.is_debug());
-        
+
         // Verbose
         assert!(!DebugLevel::Verbose.is_minimal());
         assert!(DebugLevel::Verbose.is_normal());
         assert!(DebugLevel::Verbose.is_verbose());
         assert!(!DebugLevel::Verbose.is_debug());
-        
+
         // Debug
         assert!(!DebugLevel::Debug.is_minimal());
         assert!(DebugLevel::Debug.is_normal());
@@ -1169,7 +1198,7 @@ mod tests {
         // Default is Normal
         let config = RalphConfig::default();
         assert_eq!(config.debug_level, DebugLevel::Normal);
-        
+
         // Builder can set it
         let config = RalphConfig::builder()
             .debug_level(DebugLevel::Verbose)

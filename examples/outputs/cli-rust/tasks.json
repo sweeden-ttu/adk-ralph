@@ -1,5 +1,5 @@
 {
-  "project": "taskr",
+  "project": "evidenced",
   "language": "rust",
   "phases": [
     {
@@ -8,36 +8,36 @@
       "sprints": [
         {
           "id": "sprint-1",
-          "name": "Project Setup",
+          "name": "Core Setup",
           "tasks": [
             {
               "id": "TASK-001",
-              "title": "Initialize Rust project with dependencies",
-              "description": "Create Cargo.toml with clap, serde, serde_json, chrono, uuid, colored, dirs dependencies",
+              "title": "Initialize CLI project and config model",
+              "description": "Set up Cargo project with clap, serde, tokio, reqwest, tracing, and YAML config loading.",
               "priority": 1,
               "status": "pending",
               "dependencies": [],
-              "user_story_id": "US-007",
-              "estimated_complexity": "low"
-            },
-            {
-              "id": "TASK-002",
-              "title": "Define Task data model",
-              "description": "Create Task struct with all fields, Priority and Status enums, implement Serialize/Deserialize",
-              "priority": 1,
-              "status": "pending",
-              "dependencies": ["TASK-001"],
               "user_story_id": "US-001",
               "estimated_complexity": "low"
             },
             {
-              "id": "TASK-003",
-              "title": "Implement storage module",
-              "description": "Create Storage struct with load/save/backup methods, handle XDG directories",
+              "id": "TASK-002",
+              "title": "Implement claim schemas and input validation",
+              "description": "Create strongly typed claim models and schema checks for all supported claim types.",
               "priority": 1,
               "status": "pending",
-              "dependencies": ["TASK-002"],
-              "user_story_id": "US-007",
+              "dependencies": ["TASK-001"],
+              "user_story_id": "US-001",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-003",
+              "title": "Add artifact storage and run directory layout",
+              "description": "Implement XDG-compatible artifact storage with run IDs and deterministic output paths.",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-001"],
+              "user_story_id": "US-002",
               "estimated_complexity": "medium"
             }
           ]
@@ -46,107 +46,77 @@
     },
     {
       "id": "phase-2",
-      "name": "Core Commands",
+      "name": "Validation Pipeline",
       "sprints": [
         {
           "id": "sprint-2",
-          "name": "Basic Operations",
+          "name": "Run and Decision Flow",
           "tasks": [
             {
               "id": "TASK-004",
-              "title": "Set up CLI with clap",
-              "description": "Define CLI structure with subcommands using clap derive macros",
+              "title": "Implement run command orchestration",
+              "description": "Build run coordinator for ingesting claim files and producing item-level decisions.",
               "priority": 1,
               "status": "pending",
-              "dependencies": ["TASK-002"],
+              "dependencies": ["TASK-002", "TASK-003"],
               "user_story_id": "US-001",
-              "estimated_complexity": "medium"
+              "estimated_complexity": "high"
             },
             {
               "id": "TASK-005",
-              "title": "Implement add command",
-              "description": "Handle task creation with all optional fields, generate UUID, save to storage",
+              "title": "Implement adapter interface and registry",
+              "description": "Create pluggable adapters including Texas Open Data and Texas Capitol Data connectors.",
               "priority": 1,
               "status": "pending",
-              "dependencies": ["TASK-003", "TASK-004"],
-              "user_story_id": "US-001",
-              "estimated_complexity": "medium"
+              "dependencies": ["TASK-004"],
+              "user_story_id": "US-004",
+              "estimated_complexity": "high"
             },
             {
               "id": "TASK-006",
-              "title": "Implement list command",
-              "description": "Display tasks with colored output, implement basic listing",
+              "title": "Implement decision and reason-code engine",
+              "description": "Map evidence to decision states and standardized failure reason codes.",
               "priority": 1,
               "status": "pending",
               "dependencies": ["TASK-005"],
-              "user_story_id": "US-002",
+              "user_story_id": "US-001",
               "estimated_complexity": "medium"
-            },
-            {
-              "id": "TASK-007",
-              "title": "Implement complete command",
-              "description": "Mark task as completed, record completion timestamp",
-              "priority": 1,
-              "status": "pending",
-              "dependencies": ["TASK-005"],
-              "user_story_id": "US-003",
-              "estimated_complexity": "low"
-            },
-            {
-              "id": "TASK-008",
-              "title": "Implement delete command",
-              "description": "Remove task with confirmation prompt, support --force flag",
-              "priority": 2,
-              "status": "pending",
-              "dependencies": ["TASK-005"],
-              "user_story_id": "US-004",
-              "estimated_complexity": "low"
             }
           ]
         },
         {
           "id": "sprint-3",
-          "name": "Advanced Features",
+          "name": "Checkpoint and Reporting",
           "tasks": [
             {
+              "id": "TASK-007",
+              "title": "Add checkpoint and resume support",
+              "description": "Persist run progress and enable deterministic resume by run ID.",
+              "priority": 2,
+              "status": "pending",
+              "dependencies": ["TASK-004"],
+              "user_story_id": "US-003",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-008",
+              "title": "Generate evidence bundles and signed manifests",
+              "description": "Write evidence artifacts and provenance manifests for each completed run.",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-006"],
+              "user_story_id": "US-002",
+              "estimated_complexity": "medium"
+            },
+            {
               "id": "TASK-009",
-              "title": "Implement filtering",
-              "description": "Add filter module with status, priority, project, tag filters",
-              "priority": 2,
-              "status": "pending",
-              "dependencies": ["TASK-006"],
-              "user_story_id": "US-002",
-              "estimated_complexity": "medium"
-            },
-            {
-              "id": "TASK-010",
-              "title": "Implement sorting",
-              "description": "Add sort options for priority, due date, created date",
-              "priority": 2,
-              "status": "pending",
-              "dependencies": ["TASK-006"],
-              "user_story_id": "US-002",
-              "estimated_complexity": "low"
-            },
-            {
-              "id": "TASK-011",
-              "title": "Implement edit command",
-              "description": "Allow updating task fields by ID",
-              "priority": 2,
-              "status": "pending",
-              "dependencies": ["TASK-005"],
-              "user_story_id": "US-005",
-              "estimated_complexity": "medium"
-            },
-            {
-              "id": "TASK-012",
-              "title": "Implement export command",
-              "description": "Export tasks to JSON or CSV format",
+              "title": "Implement JSON and CSV report export",
+              "description": "Add report command for decision summaries and run metrics.",
               "priority": 3,
               "status": "pending",
-              "dependencies": ["TASK-006"],
-              "user_story_id": "US-006",
-              "estimated_complexity": "medium"
+              "dependencies": ["TASK-008"],
+              "user_story_id": "US-005",
+              "estimated_complexity": "low"
             }
           ]
         }
@@ -154,51 +124,41 @@
     },
     {
       "id": "phase-3",
-      "name": "Polish",
+      "name": "Quality and Reliability",
       "sprints": [
         {
           "id": "sprint-4",
-          "name": "Testing and Documentation",
+          "name": "Testing and Hardening",
           "tasks": [
             {
-              "id": "TASK-013",
-              "title": "Add unit tests for Task model",
-              "description": "Test task creation, validation, serialization",
+              "id": "TASK-010",
+              "title": "Add unit tests for policy and decision logic",
+              "description": "Cover pass/fail/conflicting/insufficient evidence branching rules.",
               "priority": 2,
               "status": "pending",
-              "dependencies": ["TASK-002"],
+              "dependencies": ["TASK-006"],
               "user_story_id": "US-001",
               "estimated_complexity": "low"
             },
             {
-              "id": "TASK-014",
-              "title": "Add integration tests for CLI",
-              "description": "Test all commands with various inputs",
+              "id": "TASK-011",
+              "title": "Add integration tests for run/resume/report commands",
+              "description": "Verify end-to-end run lifecycle and artifact output correctness.",
               "priority": 2,
               "status": "pending",
-              "dependencies": ["TASK-012"],
-              "user_story_id": "US-001",
+              "dependencies": ["TASK-007", "TASK-009"],
+              "user_story_id": "US-003",
               "estimated_complexity": "medium"
             },
             {
-              "id": "TASK-015",
-              "title": "Add property tests for serialization",
-              "description": "Use proptest for JSON round-trip testing",
-              "priority": 3,
-              "status": "pending",
-              "dependencies": ["TASK-013"],
-              "user_story_id": "US-007",
-              "estimated_complexity": "medium"
-            },
-            {
-              "id": "TASK-016",
-              "title": "Add error handling and user messages",
-              "description": "Improve error messages, add help text",
+              "id": "TASK-012",
+              "title": "Add adapter contract tests and replay fixtures",
+              "description": "Ensure adapter mappings stay compatible with authoritative source payloads.",
               "priority": 2,
               "status": "pending",
-              "dependencies": ["TASK-012"],
-              "user_story_id": "US-001",
-              "estimated_complexity": "low"
+              "dependencies": ["TASK-005"],
+              "user_story_id": "US-004",
+              "estimated_complexity": "medium"
             }
           ]
         }

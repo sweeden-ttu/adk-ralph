@@ -13,6 +13,7 @@ use crate::models::ModelConfig;
 use crate::{RalphError, Result};
 use adk_rust::agent::LlmAgentBuilder;
 use adk_rust::{Agent, Llm};
+use colored::Colorize;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -122,7 +123,9 @@ impl Default for PrdAgentBuilder {
     fn default() -> Self {
         Self {
             model: None,
-            model_config: ModelConfig::new("gemini", "gemini-3.1-pro-preview"),
+            model_config: ModelConfig::new("gemini", "gemini-3.1-pro-preview")
+                .with_fallback("gemini-3.1-flash-preview")
+                .with_fallback("gemini-2.5-flash"),
             output_path: PathBuf::from("prd.md"),
             project_path: PathBuf::from("."),
         }
@@ -248,23 +251,59 @@ impl PrdAgentBuilder {
 }
 
 
-/// Create an LLM model from configuration.
+/// Create an LLM model from configuration with fallback support.
 async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
     use std::env;
 
-    let model: Arc<dyn Llm> = match config.provider.to_lowercase().as_str() {
+    let mut errors = Vec::new();
+    
+    let all_models = std::iter::once(config.model_name.clone())
+        .chain(config.fallback_model_names.clone())
+        .collect::<Vec<_>>();
+
+    for model_name in all_models {
+        let result = try_create_model(&config.provider, &model_name).await;
+        
+        match result {
+            Ok(model) => {
+                if model_name != config.model_name {
+                    eprintln!("{}: {}", "Fallback model used".yellow(), model_name);
+                }
+                return Ok(model);
+            }
+            Err(e) => {
+                errors.push((model_name, e));
+            }
+        }
+    }
+
+    let error_summary = errors.iter()
+        .map(|(name, e)| format!("{}: {}", name, e))
+        .collect::<Vec<_>>()
+        .join("; ");
+
+    Err(RalphError::Model {
+        provider: config.provider.clone(),
+        message: format!("All models failed: {}", error_summary),
+    })
+}
+
+async fn try_create_model(provider: &str, model_name: &str) -> Result<Arc<dyn Llm>> {
+    use std::env;
+
+    match provider.to_lowercase().as_str() {
         "anthropic" => {
             use adk_rust::model::anthropic::{AnthropicClient, AnthropicConfig};
 
             let api_key = env::var("ANTHROPIC_API_KEY").map_err(|_| {
                 RalphError::Configuration("ANTHROPIC_API_KEY environment variable not set".into())
             })?;
-            let anthropic_config = AnthropicConfig::new(api_key, &config.model_name);
+            let anthropic_config = AnthropicConfig::new(api_key, model_name);
             let client = AnthropicClient::new(anthropic_config).map_err(|e| RalphError::Model {
-                provider: "anthropic".into(),
+                provider: "anthropic".to_string(),
                 message: e.to_string(),
             })?;
-            Arc::new(client)
+            Ok(Arc::new(client))
         }
         "openai" => {
             use adk_rust::model::openai::{OpenAIClient, OpenAIConfig};
@@ -272,12 +311,12 @@ async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> 
             let api_key = env::var("OPENAI_API_KEY").map_err(|_| {
                 RalphError::Configuration("OPENAI_API_KEY environment variable not set".into())
             })?;
-            let openai_config = OpenAIConfig::new(api_key, &config.model_name);
+            let openai_config = OpenAIConfig::new(api_key, model_name);
             let client = OpenAIClient::new(openai_config).map_err(|e| RalphError::Model {
-                provider: "openai".into(),
+                provider: "openai".to_string(),
                 message: e.to_string(),
             })?;
-            Arc::new(client)
+            Ok(Arc::new(client))
         }
         "gemini" => {
             use adk_rust::model::GeminiModel;
@@ -289,23 +328,21 @@ async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> 
                         "GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set".into(),
                     )
                 })?;
-            let client = GeminiModel::new(api_key, &config.model_name).map_err(|e| {
+            let client = GeminiModel::new(api_key, model_name).map_err(|e| {
                 RalphError::Model {
-                    provider: "gemini".into(),
+                    provider: "gemini".to_string(),
                     message: e.to_string(),
                 }
             })?;
-            Arc::new(client)
+            Ok(Arc::new(client))
         }
-        provider => {
-            return Err(RalphError::Configuration(format!(
+        _ => {
+            Err(RalphError::Configuration(format!(
                 "Unsupported model provider: {}. Supported: anthropic, openai, gemini",
                 provider
-            )));
+            )))
         }
-    };
-
-    Ok(model)
+    }
 }
 
 #[cfg(test)]

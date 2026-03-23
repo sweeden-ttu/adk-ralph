@@ -28,7 +28,7 @@ flowchart TB
     end
 
     subgraph "Phase 1: Requirements"
-        PA[PRD Agent<br/>gemini-3.1-pro-preview]
+        PA[PRD Agent<br/>gemini-3.1-flash-preview]
         PRD[prd.md]
         UP --> PA
         PA --> PRD
@@ -78,7 +78,7 @@ flowchart TB
 
 | Agent | Default Provider | Default Model | Thinking | Purpose |
 |-------|-----------------|---------------|----------|---------|
-| PRD Agent | Gemini | `gemini-3.1-pro-preview` | Configurable | Deep requirements analysis |
+| PRD Agent | Gemini | `gemini-3.1-flash-preview` | Configurable | Deep requirements analysis |
 | Architect Agent | Gemini | `gemini-3-pro-preview` | Configurable | Complex design decisions |
 | Ralph Loop Agent | Gemini | `gemini-2.5-flash` | Disabled | Fast implementation iterations |
 
@@ -191,7 +191,7 @@ Each agent can use a different model and provider:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RALPH_PRD_PROVIDER` | `gemini` | Provider for PRD Agent |
-| `RALPH_PRD_MODEL` | `gemini-3.1-pro-preview` | Model for PRD Agent |
+| `RALPH_PRD_MODEL` | `gemini-3.1-flash-preview` | Model for PRD Agent |
 | `RALPH_PRD_THINKING` | `false` | Enable thinking mode |
 | `RALPH_ARCHITECT_PROVIDER` | `gemini` | Provider for Architect Agent |
 | `RALPH_ARCHITECT_MODEL` | `gemini-3-pro-preview` | Model for Architect Agent |
@@ -293,7 +293,7 @@ use adk_ralph::{RalphConfig, AgentModelConfig, ModelConfig};
 
 let config = RalphConfig::builder()
     .agents(AgentModelConfig {
-        prd_model: ModelConfig::new("gemini", "gemini-3.1-pro-preview")
+        prd_model: ModelConfig::new("gemini", "gemini-3.1-flash-preview")
             .with_thinking()
             .with_max_tokens(8192),
         architect_model: ModelConfig::new("gemini", "gemini-3-pro-preview")

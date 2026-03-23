@@ -1,61 +1,57 @@
-# Order Processing Microservice - Java
+# Validation Routing Microservice - Java
 
-Create a Spring Boot microservice for order processing.
+Create a Spring Boot microservice called `validator-router`.
 
 ## Purpose
 
-A production-ready microservice handling order lifecycle management with event-driven architecture.
+An event-driven routing service that receives extracted claims, invokes specialized validators, enforces pass/fail/retry policy, and emits workflow events for downstream indexing and human review.
 
 ## Features
 
-- **Order Management**
-  - Create orders with line items
-  - Update order details
-  - Cancel orders (with validation)
-  - Query orders with filtering and pagination
+- **Claim Intake**
+  - Ingest claim events from queue/topic
+  - Validate event schema and deduplicate by idempotency key
+  - Classify claim type (citation, official, election, law, document, template)
 
-- **Order Workflow**
-  - Status transitions: PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED
-  - Validation rules for each transition
-  - Automatic status updates from external events
+- **Routing and Policy**
+  - Route claims to validator adapters based on type and jurisdiction
+  - Policy states: `PASS`, `FAIL`, `RETRY`, `ESCALATE`
+  - Configurable retry budget, backoff, and dead-letter handling
+  - Escalate low-confidence or conflicting outcomes to analyst queue
 
-- **Integration**
-  - Payment service integration (mock for development)
-  - Inventory service integration
-  - Notification service for status updates
+- **Event Publishing**
+  - Publish lifecycle events: `ClaimReceived`, `ValidationPassed`, `ValidationFailed`, `EscalationCreated`
+  - Ensure idempotent publish semantics
+  - Support replay mode for incident recovery
 
-- **Events**
-  - Publish order events to Kafka
-  - Event types: OrderCreated, OrderConfirmed, OrderShipped, etc.
-  - Idempotent event handling
+- **Operations**
+  - Administrative endpoints for replay and policy reload
+  - Health/readiness checks and queue lag metrics
+  - Correlation IDs across inbound/outbound events
 
 ## Technical Requirements
 
 - Spring Boot 3.x with Java 21
-- Spring Data JPA with PostgreSQL
-- Spring Kafka for event publishing
-- Spring Security with OAuth2
-- Flyway for database migrations
-- OpenAPI 3.0 documentation
+- Spring Kafka for intake/publish workflows
+- Spring Data JPA + PostgreSQL for run metadata
+- Spring Retry for retry orchestration
+- Flyway for migrations
+- OpenAPI docs for admin/control APIs
 
 ## API Design
 
-- RESTful endpoints
-- HATEOAS links for navigation
-- Proper error responses with problem details (RFC 7807)
-- Request validation with Bean Validation
+- REST admin endpoints for replay, status, and policy inspection
+- RFC 7807 problem details for errors
+- Bean Validation for request payloads
 
 ## Observability
 
-- Spring Actuator for health checks
-- Micrometer metrics
-- Distributed tracing with Sleuth
-- Structured logging with correlation IDs
+- Spring Actuator health and metrics
+- Micrometer dashboards for routing outcomes
+- Distributed tracing with correlation IDs
 
 ## Testing
 
-- JUnit 5 for unit tests
-- Testcontainers for integration tests
-- WireMock for external service mocking
-- Contract tests with Spring Cloud Contract
-- Coverage target: 80%
+- JUnit 5 unit tests for routing and policy engine
+- Testcontainers integration tests (Kafka + PostgreSQL)
+- Contract tests for validator adapter interfaces
