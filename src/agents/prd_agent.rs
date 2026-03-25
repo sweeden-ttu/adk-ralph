@@ -33,6 +33,7 @@ Match the complexity of your output to the user's request:
 ## Guidelines
 
 - Generate only the user stories needed to fulfill the request
+- For codebase updates or bug fixes, generate at least 3 concrete user stories and never return an empty `user_stories` list
 - Include essential features: error handling, --help, --version for CLIs
 - Use EARS patterns for acceptance criteria:
   - WHEN <trigger>, THE <system> SHALL <response>
@@ -181,6 +182,7 @@ impl PrdAgentBuilder {
                 },
                 "user_stories": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "object",
                         "properties": {
@@ -467,9 +469,15 @@ impl PrdAgent {
             }
         }
 
-        // Parse the JSON response
-        let prd_json: serde_json::Value = serde_json::from_str(&response_text)
-            .map_err(|e| RalphError::Prd(format!("Failed to parse PRD JSON: {} - Response: {}", e, &response_text[..response_text.len().min(500)])))?;
+        // Parse the JSON response (supports raw JSON or fenced markdown JSON)
+        let prd_json: serde_json::Value = parse_json_response(&response_text)
+            .map_err(|e| {
+                RalphError::Prd(format!(
+                    "Failed to parse PRD JSON: {} - Response: {}",
+                    e,
+                    &response_text[..response_text.len().min(500)]
+                ))
+            })?;
 
         // Convert JSON to PrdDocument
         let prd = json_to_prd_document(&prd_json)?;
@@ -566,4 +574,37 @@ fn json_to_prd_document(json: &serde_json::Value) -> Result<crate::models::PrdDo
 fn prd_to_markdown(prd: &crate::models::PrdDocument) -> String {
     // Use the built-in to_markdown method
     prd.to_markdown()
+}
+
+/// Parse JSON from model output, allowing optional markdown code fences.
+fn parse_json_response(text: &str) -> std::result::Result<serde_json::Value, serde_json::Error> {
+    let trimmed = text.trim();
+    if let Ok(value) = serde_json::from_str(trimmed) {
+        return Ok(value);
+    }
+
+    // Handle outputs like ```json ... ``` or ``` ... ```
+    let unfenced = trimmed
+        .strip_prefix("```json")
+        .or_else(|| trimmed.strip_prefix("```"))
+        .map(str::trim)
+        .and_then(|s| s.strip_suffix("```"))
+        .map(str::trim);
+
+    if let Some(candidate) = unfenced {
+        if let Ok(value) = serde_json::from_str(candidate) {
+            return Ok(value);
+        }
+    }
+
+    // Best effort: extract outermost JSON object from mixed text.
+    if let (Some(start), Some(end)) = (trimmed.find('{'), trimmed.rfind('}')) {
+        if start < end {
+            if let Ok(value) = serde_json::from_str(&trimmed[start..=end]) {
+                return Ok(value);
+            }
+        }
+    }
+
+    serde_json::from_str(trimmed)
 }

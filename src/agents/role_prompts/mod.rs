@@ -4,11 +4,13 @@
 //! can reuse the same role definitions without duplicating prompt text.
 
 pub mod documenter;
+pub mod assets_manager_data_analyst;
 pub mod optimizer;
 pub mod process;
 pub mod scaffolder;
 pub mod test_engineer;
 
+use assets_manager_data_analyst::ASSETS_MANAGER_DATA_ANALYST_PROMPT;
 use documenter::DOCUMENTER_PROMPT;
 use optimizer::OPTIMIZER_PROMPT;
 use process::PROCESS_PROMPT;
@@ -21,6 +23,7 @@ pub enum SpecialistRole {
     Scaffolder,
     TestEngineer,
     Documenter,
+    AssetsManagerDataAnalyst,
     Optimizer,
     Process,
 }
@@ -31,6 +34,9 @@ impl SpecialistRole {
             SpecialistRole::Scaffolder => "Scaffolder Agent (Implementer)",
             SpecialistRole::TestEngineer => "Test Engineer Agent (Quality Guard)",
             SpecialistRole::Documenter => "Documenter Agent (Scribe)",
+            SpecialistRole::AssetsManagerDataAnalyst => {
+                "Assets Manager and Data Analyst Agent (Integrator/Librarian)"
+            }
             SpecialistRole::Optimizer => "Optimizer Agent (Refactoring Partner)",
             SpecialistRole::Process => "Process Agent (Code Supervisor)",
         }
@@ -41,6 +47,7 @@ impl SpecialistRole {
             SpecialistRole::Scaffolder => SCAFFOLDER_PROMPT,
             SpecialistRole::TestEngineer => TEST_ENGINEER_PROMPT,
             SpecialistRole::Documenter => DOCUMENTER_PROMPT,
+            SpecialistRole::AssetsManagerDataAnalyst => ASSETS_MANAGER_DATA_ANALYST_PROMPT,
             SpecialistRole::Optimizer => OPTIMIZER_PROMPT,
             SpecialistRole::Process => PROCESS_PROMPT,
         }
@@ -48,10 +55,11 @@ impl SpecialistRole {
 }
 
 /// Ordered set of all specialist roles used per task.
-pub const SPECIALIST_ROLES: [SpecialistRole; 5] = [
+pub const SPECIALIST_ROLES: [SpecialistRole; 6] = [
     SpecialistRole::Scaffolder,
     SpecialistRole::TestEngineer,
     SpecialistRole::Documenter,
+    SpecialistRole::AssetsManagerDataAnalyst,
     SpecialistRole::Optimizer,
     SpecialistRole::Process,
 ];

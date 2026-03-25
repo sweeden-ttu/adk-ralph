@@ -47,6 +47,11 @@ Conversely, don't under-design complex systems. If the PRD describes a distribut
 ## Output Format
 
 Generate a JSON response with two sections: `design` and `tasks`.
+Return raw JSON only (no markdown code fences, no prose before/after JSON).
+Keep output concise and execution-oriented:
+- Maximum 8 components
+- Maximum 15 tasks
+- Keep each task description under 2 sentences
 
 ### Design Section
 
@@ -607,13 +612,14 @@ impl ArchitectAgent {
             }
         }
 
-        // Parse the JSON response
-        let architect_json: serde_json::Value = serde_json::from_str(&response_text)
-            .map_err(|e| RalphError::Design(format!(
-                "Failed to parse architect JSON: {} - Response: {}", 
-                e, 
+        // Parse the JSON response (supports raw JSON or fenced markdown JSON)
+        let architect_json: serde_json::Value = parse_json_response(&response_text).map_err(|e| {
+            RalphError::Design(format!(
+                "Failed to parse architect JSON: {} - Response: {}",
+                e,
                 &response_text[..response_text.len().min(500)]
-            )))?;
+            ))
+        })?;
 
         // Convert JSON to DesignDocument and TaskList
         let design = json_to_design_document(&architect_json["design"])?;
@@ -930,4 +936,37 @@ fn json_to_task_list(json: &serde_json::Value, project: &str) -> Result<crate::m
         created_at: Some(chrono::Utc::now().to_rfc3339()),
         updated_at: None,
     })
+}
+
+/// Parse JSON from model output, allowing optional markdown code fences.
+fn parse_json_response(text: &str) -> std::result::Result<serde_json::Value, serde_json::Error> {
+    let trimmed = text.trim();
+    if let Ok(value) = serde_json::from_str(trimmed) {
+        return Ok(value);
+    }
+
+    // Handle outputs like ```json ... ``` or ``` ... ```
+    let unfenced = trimmed
+        .strip_prefix("```json")
+        .or_else(|| trimmed.strip_prefix("```"))
+        .map(str::trim)
+        .and_then(|s| s.strip_suffix("```"))
+        .map(str::trim);
+
+    if let Some(candidate) = unfenced {
+        if let Ok(value) = serde_json::from_str(candidate) {
+            return Ok(value);
+        }
+    }
+
+    // Best effort: extract outermost JSON object from mixed text.
+    if let (Some(start), Some(end)) = (trimmed.find('{'), trimmed.rfind('}')) {
+        if start < end {
+            if let Ok(value) = serde_json::from_str(&trimmed[start..=end]) {
+                return Ok(value);
+            }
+        }
+    }
+
+    serde_json::from_str(trimmed)
 }

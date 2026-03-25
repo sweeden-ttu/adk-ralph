@@ -100,7 +100,10 @@ pub use tools::{
 };
 
 // Re-export agents
-pub use agents::{ArchitectAgent, CompletionStatus, PrdAgent, PrdAgentBuilder, PrdResult, RalphLoopAgent, RalphLoopAgentBuilder};
+pub use agents::{
+    ArchitectAgent, AssetLibrary, AssetRecord, AssetsManagerDataAnalystAgent, CompletionStatus,
+    PrdAgent, PrdAgentBuilder, PrdResult, RalphLoopAgent, RalphLoopAgentBuilder,
+};
 
 // Re-export orchestrator
 pub use orchestrator::{OrchestratorBuilder, OrchestratorState, PipelinePhase, RalphOrchestrator};

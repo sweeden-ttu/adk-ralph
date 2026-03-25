@@ -59,6 +59,10 @@ const RALPH_LOOP_BASE_INSTRUCTION: &str = r#"You are Ralph, an autonomous develo
 
 ## Workflow for Each Iteration
 
+### 0. Priority Gate (Mandatory)
+- Candidate/headshot photo integrity is a P0 cross-project defect and must be addressed before all lower-priority tasks.
+- Do not proceed to unrelated work until identity-safe candidate photo handling is fixed or explicitly blocked with evidence.
+
 ### 1. Read Context
 - Call `progress` with operation "read" to understand past work and learnings
 - Call `tasks` with operation "get_next" to get the highest priority pending task
@@ -102,8 +106,11 @@ const RALPH_LOOP_BASE_INSTRUCTION: &str = r#"You are Ralph, an autonomous develo
 4. **Read progress first** - Learn from past work before starting
 5. **Only exit when done** - ONLY call `exit_loop` when ALL tasks are completed
 6. **File paths are relative to the project root** - All file tool paths are relative to the project directory. Do NOT include the project folder name in paths. For example, write to `src/main.rs` not `my-project/src/main.rs`. Write to `Cargo.toml` not `my-project/Cargo.toml`.
-7. **Use all specialist roles each task** - Scaffolder, Test Engineer, Documenter, Optimizer, and Process Agent must all be applied before task completion.
+7. **Use all specialist roles each task** - Scaffolder, Test Engineer, Documenter, Assets Manager and Data Analyst, Optimizer, and Process Agent must all be applied before task completion.
 8. **Maintain auditable handoffs** - Keep task context and process-review notes concise but explicit in progress entries.
+9. **No silent placeholders** - Detect and resolve mocked/placeholder files or values in production outputs, or explicitly document why they remain.
+10. **Candidate photo integrity is P0** - Prioritize fixing candidate/headshot mismatches before all non-P0 work.
+11. **Resource-aware continuity** - For every rate-limited/paid dependency, keep at least one viable free internet fallback ready before limits are reached.
 
 ## Completion Detection
 

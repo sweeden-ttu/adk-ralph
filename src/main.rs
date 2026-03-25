@@ -12,7 +12,10 @@
 //! RALPH_MODEL_PROVIDER=anthropic ralph "Build a REST API"
 //! ```
 
-use adk_ralph::{DebugLevel, InteractiveRepl, PipelinePhase, RalphConfig, RalphOrchestrator, RalphOutput, Result, TelemetryConfig};
+use adk_ralph::{
+    AssetsManagerDataAnalystAgent, DebugLevel, InteractiveRepl, PipelinePhase, RalphConfig,
+    RalphOrchestrator, RalphOutput, Result, TelemetryConfig,
+};
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use tracing::info;
@@ -97,6 +100,27 @@ enum Commands {
         /// Auto-approve all changes without confirmation
         #[arg(long)]
         auto_approve: bool,
+    },
+    /// Run pipeline + asset discovery setup in parallel
+    ParallelUpdate {
+        /// Project description
+        #[arg(required = true)]
+        prompt: Vec<String>,
+        /// Asset library output file under ll/_data
+        #[arg(long, default_value = "/Users/sweeden/projects/ll/_data/asset_library.json")]
+        library_path: String,
+    },
+    /// Iterative run where outputs feed next round
+    Iterate {
+        /// Project description
+        #[arg(required = true)]
+        prompt: Vec<String>,
+        /// Number of iterative rounds (>=1)
+        #[arg(long, default_value_t = 2)]
+        rounds: u8,
+        /// Asset library output file under ll/_data
+        #[arg(long, default_value = "/Users/sweeden/projects/ll/_data/asset_library.json")]
+        library_path: String,
     },
 }
 
@@ -291,6 +315,68 @@ async fn resume_pipeline(config: RalphConfig, phase: PipelinePhase, prompt: &str
     Ok(())
 }
 
+async fn run_parallel_update(config: RalphConfig, prompt: &str, library_path: &str) -> Result<()> {
+    let assets_agent = AssetsManagerDataAnalystAgent::new(library_path);
+    let cfg = config.clone();
+
+    println!("{}", "Starting parallel-update...".green().bold());
+    println!(
+        "{} {}",
+        "Asset library:".green().bold(),
+        assets_agent.library_path().display()
+    );
+    println!();
+
+    let assets_task = async {
+        assets_agent.ensure_library()?;
+        assets_agent.seed_from_prompt(prompt)?;
+        Ok::<(), adk_ralph::RalphError>(())
+    };
+    let pipeline_task = run_pipeline(cfg, prompt);
+    let (_assets_done, _pipeline_done) = tokio::try_join!(assets_task, pipeline_task)?;
+
+    Ok(())
+}
+
+async fn run_iterate_pipeline(
+    config: RalphConfig,
+    prompt: &str,
+    rounds: u8,
+    library_path: &str,
+) -> Result<()> {
+    let rounds = rounds.max(1);
+    let assets_agent = AssetsManagerDataAnalystAgent::new(library_path);
+    assets_agent.ensure_library()?;
+    assets_agent.seed_from_prompt(prompt)?;
+
+    println!(
+        "{} {} {}",
+        "Starting iterative pipeline for".green().bold(),
+        rounds.to_string().cyan(),
+        "round(s)...".green().bold()
+    );
+
+    for round in 1..=rounds {
+        println!();
+        println!(
+            "{} {}",
+            "Iteration round".yellow().bold(),
+            round.to_string().cyan()
+        );
+
+        if round == 1 {
+            run_pipeline(config.clone(), prompt).await?;
+        } else {
+            let iterative_prompt = format!(
+                "{prompt}\n\nIterative peer-review round {round}: use outputs from prd.md, design.md, tasks.json, and progress to improve quality, fix gaps, and tighten tests/documentation."
+            );
+            resume_pipeline(config.clone(), PipelinePhase::Implementation, &iterative_prompt).await?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Run the interactive chat mode.
 ///
 /// This starts a REPL session where users can interact with Ralph
@@ -442,6 +528,30 @@ async fn main() -> Result<()> {
             run_interactive_chat(config, resume, auto_approve).await?;
         }
 
+        Some(Commands::ParallelUpdate { prompt, library_path }) => {
+            let prompt_str = prompt.join(" ");
+            if prompt_str.is_empty() {
+                eprintln!("{}", "Error: Project description is required".red());
+                std::process::exit(1);
+            }
+            print_config(&config);
+            run_parallel_update(config, &prompt_str, &library_path).await?;
+        }
+
+        Some(Commands::Iterate {
+            prompt,
+            rounds,
+            library_path,
+        }) => {
+            let prompt_str = prompt.join(" ");
+            if prompt_str.is_empty() {
+                eprintln!("{}", "Error: Project description is required".red());
+                std::process::exit(1);
+            }
+            print_config(&config);
+            run_iterate_pipeline(config, &prompt_str, rounds, &library_path).await?;
+        }
+
         None => {
             // No subcommand - use prompt directly
             let prompt_str = cli.prompt.join(" ");
@@ -455,6 +565,8 @@ async fn main() -> Result<()> {
                 eprintln!("Commands:");
                 eprintln!("  ralph run <prompt>     Run the full pipeline");
                 eprintln!("  ralph resume [--phase] Resume from a specific phase");
+                eprintln!("  ralph parallel-update  Run all agents in parallel mode");
+                eprintln!("  ralph iterate          Run iterative peer-review rounds");
                 eprintln!("  ralph chat             Start interactive chat mode");
                 eprintln!("  ralph status           Show current status");
                 eprintln!("  ralph config           Validate configuration");
