@@ -31,6 +31,7 @@ use crate::models::{DesignDocument, ModelConfig, RalphConfig};
 use crate::output::{process_event_part, RalphOutput};
 use crate::tools::{FileTool, GitTool, ProgressTool, TaskTool, TestTool};
 use crate::{RalphError, Result};
+use super::role_prompts::specialist_role_contracts_markdown;
 use adk_rust::agent::{LlmAgentBuilder, LoopAgent};
 use adk_rust::{Agent, Llm, Tool};
 use adk_rust::tool::ExitLoopTool;
@@ -45,7 +46,7 @@ use std::sync::Arc;
 /// - Write files and run tests
 /// - Commit changes and record progress
 /// - Decide when to exit the loop
-const RALPH_LOOP_INSTRUCTION: &str = r#"You are Ralph, an autonomous development agent. Your role is to implement tasks one at a time until the project is complete.
+const RALPH_LOOP_BASE_INSTRUCTION: &str = r#"You are Ralph, an autonomous development agent. Your role is to implement tasks one at a time until the project is complete.
 
 ## Available Tools
 
@@ -61,25 +62,31 @@ const RALPH_LOOP_INSTRUCTION: &str = r#"You are Ralph, an autonomous development
 ### 1. Read Context
 - Call `progress` with operation "read" to understand past work and learnings
 - Call `tasks` with operation "get_next" to get the highest priority pending task
+- Open a task-level context handoff for the selected task with:
+  - objective
+  - acceptance_criteria
+  - files in scope
+  - constraints and risks
 
 ### 2. Implement the Task
-- Read relevant files using `file` with operation "read"
-- Write implementation code using `file` with operation "write"
-- Create tests for the implementation
+- Apply all specialist role contracts from the Specialist Role Contracts section
 
 ### 3. Verify Implementation
 - Call `test` with operation "run" to run the test suite
 - If tests fail, fix the code and re-run tests (max 3 attempts)
 - If tests still fail after 3 attempts, mark task as blocked
+- Validate that acceptance criteria are met before commit
 
 ### 4. Commit and Record
 - If tests pass, call `git` with operation "add" then "commit"
 - Call `progress` with operation "append" to record:
+  - task_context_handoff: concise summary of objective, criteria, and scope
   - approach: How you implemented it
   - learnings: What you learned
   - gotchas: Pitfalls to avoid
   - files_created/files_modified: What changed
   - test_results: Pass/fail counts
+  - process_review: prioritized findings and final quality decision
 - Call `tasks` with operation "complete" to mark the task done
 
 ### 5. Check Completion
@@ -95,6 +102,8 @@ const RALPH_LOOP_INSTRUCTION: &str = r#"You are Ralph, an autonomous development
 4. **Read progress first** - Learn from past work before starting
 5. **Only exit when done** - ONLY call `exit_loop` when ALL tasks are completed
 6. **File paths are relative to the project root** - All file tool paths are relative to the project directory. Do NOT include the project folder name in paths. For example, write to `src/main.rs` not `my-project/src/main.rs`. Write to `Cargo.toml` not `my-project/Cargo.toml`.
+7. **Use all specialist roles each task** - Scaffolder, Test Engineer, Documenter, Optimizer, and Process Agent must all be applied before task completion.
+8. **Maintain auditable handoffs** - Keep task context and process-review notes concise but explicit in progress entries.
 
 ## Completion Detection
 
@@ -104,6 +113,14 @@ When you call `tasks` with operation "list" and see all tasks are "completed":
 
 IMPORTANT: Do NOT call `exit_loop` until ALL tasks are completed. Keep working on tasks one by one.
 "#;
+
+fn compose_loop_instruction() -> String {
+    format!(
+        "## Specialist Role Contracts\n\n{}\n\n{}",
+        specialist_role_contracts_markdown(),
+        RALPH_LOOP_BASE_INSTRUCTION
+    )
+}
 
 /// Ralph Loop Agent that iteratively implements tasks until completion.
 ///
@@ -155,8 +172,8 @@ impl RalphLoopAgent {
     }
 
     /// Get the instruction prompt for the Ralph Loop Agent.
-    pub fn instruction() -> &'static str {
-        RALPH_LOOP_INSTRUCTION
+    pub fn instruction() -> String {
+        compose_loop_instruction()
     }
 
     /// Get the model configuration.
@@ -309,7 +326,7 @@ impl RalphLoopAgentBuilder {
 
         // Build instruction with design context if available
         let instruction = self.custom_instruction.unwrap_or_else(|| {
-            let mut inst = RALPH_LOOP_INSTRUCTION.to_string();
+            let mut inst = compose_loop_instruction();
             
             // Try to add design context
             let design_path = self.project_path.join(&self.config.design_path);
