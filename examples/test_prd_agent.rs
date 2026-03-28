@@ -61,7 +61,10 @@ Features:
 
             // Show user stories
             for story in &result.prd.user_stories {
-                println!("   {} - {} (Priority: {})", story.id, story.title, story.priority);
+                println!(
+                    "   {} - {} (Priority: {})",
+                    story.id, story.title, story.priority
+                );
             }
 
             println!();
@@ -69,7 +72,7 @@ Features:
         }
         Err(e) => {
             println!("❌ Error: {}", e);
-            
+
             // Check if file was created anyway
             let prd_path = project_path.join("prd.md");
             if prd_path.exists() {

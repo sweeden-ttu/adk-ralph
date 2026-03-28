@@ -10,7 +10,7 @@
 use adk_rust::{Result, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -44,13 +44,14 @@ impl FileTool {
         }
 
         // For existing files, verify within project
-        let canonical = full_path.canonicalize().map_err(|e| {
-            adk_rust::AdkError::Tool(format!("Invalid path: {} - {}", rel_path, e))
-        })?;
+        let canonical = full_path
+            .canonicalize()
+            .map_err(|e| adk_rust::AdkError::Tool(format!("Invalid path: {} - {}", rel_path, e)))?;
 
-        let project_canonical = self.project_path.canonicalize().map_err(|e| {
-            adk_rust::AdkError::Tool(format!("Invalid project path: {}", e))
-        })?;
+        let project_canonical = self
+            .project_path
+            .canonicalize()
+            .map_err(|e| adk_rust::AdkError::Tool(format!("Invalid project path: {}", e)))?;
 
         if !canonical.starts_with(&project_canonical) {
             return Err(adk_rust::AdkError::Tool(
@@ -135,9 +136,8 @@ impl Tool for FileTool {
         match args.operation.as_str() {
             "read" => {
                 let full_path = self.validate_path(&args.path)?;
-                let content = std::fs::read_to_string(&full_path).map_err(|e| {
-                    adk_rust::AdkError::Tool(format!("Failed to read file: {}", e))
-                })?;
+                let content = std::fs::read_to_string(&full_path)
+                    .map_err(|e| adk_rust::AdkError::Tool(format!("Failed to read file: {}", e)))?;
                 Ok(json!({
                     "success": true,
                     "operation": "read",
@@ -147,7 +147,9 @@ impl Tool for FileTool {
             }
             "write" => {
                 let content = args.content.ok_or_else(|| {
-                    adk_rust::AdkError::Tool("'content' is required for write operation".to_string())
+                    adk_rust::AdkError::Tool(
+                        "'content' is required for write operation".to_string(),
+                    )
                 })?;
 
                 let sanitized_path = self.sanitize_path(&args.path);
@@ -250,7 +252,9 @@ pub struct ReadFileTool {
 
 impl ReadFileTool {
     pub fn new(project_path: impl Into<PathBuf>) -> Self {
-        Self { project_path: project_path.into() }
+        Self {
+            project_path: project_path.into(),
+        }
     }
 }
 
@@ -295,25 +299,25 @@ impl Tool for ReadFileTool {
             .map_err(|e| adk_rust::AdkError::Tool(format!("Invalid arguments: {}", e)))?;
 
         let full_path = self.project_path.join(&args.path);
-        
+
         // Security: ensure path is within project directory
         let canonical = full_path.canonicalize().map_err(|e| {
             adk_rust::AdkError::Tool(format!("File not found: {} - {}", args.path, e))
         })?;
-        
-        let project_canonical = self.project_path.canonicalize().map_err(|e| {
-            adk_rust::AdkError::Tool(format!("Invalid project path: {}", e))
-        })?;
-        
+
+        let project_canonical = self
+            .project_path
+            .canonicalize()
+            .map_err(|e| adk_rust::AdkError::Tool(format!("Invalid project path: {}", e)))?;
+
         if !canonical.starts_with(&project_canonical) {
             return Err(adk_rust::AdkError::Tool(
-                "Access denied: path outside project directory".to_string()
+                "Access denied: path outside project directory".to_string(),
             ));
         }
 
-        let content = std::fs::read_to_string(&canonical).map_err(|e| {
-            adk_rust::AdkError::Tool(format!("Failed to read file: {}", e))
-        })?;
+        let content = std::fs::read_to_string(&canonical)
+            .map_err(|e| adk_rust::AdkError::Tool(format!("Failed to read file: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -330,7 +334,9 @@ pub struct WriteFileTool {
 
 impl WriteFileTool {
     pub fn new(project_path: impl Into<PathBuf>) -> Self {
-        Self { project_path: project_path.into() }
+        Self {
+            project_path: project_path.into(),
+        }
     }
 }
 
@@ -341,7 +347,6 @@ impl std::fmt::Debug for WriteFileTool {
             .finish()
     }
 }
-
 
 #[async_trait]
 impl Tool for WriteFileTool {
@@ -381,7 +386,7 @@ impl Tool for WriteFileTool {
             .map_err(|e| adk_rust::AdkError::Tool(format!("Invalid arguments: {}", e)))?;
 
         let full_path = self.project_path.join(&args.path);
-        
+
         // Create parent directories if needed
         if let Some(parent) = full_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
@@ -389,9 +394,8 @@ impl Tool for WriteFileTool {
             })?;
         }
 
-        std::fs::write(&full_path, &args.content).map_err(|e| {
-            adk_rust::AdkError::Tool(format!("Failed to write file: {}", e))
-        })?;
+        std::fs::write(&full_path, &args.content)
+            .map_err(|e| adk_rust::AdkError::Tool(format!("Failed to write file: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -408,7 +412,9 @@ pub struct ListFilesTool {
 
 impl ListFilesTool {
     pub fn new(project_path: impl Into<PathBuf>) -> Self {
-        Self { project_path: project_path.into() }
+        Self {
+            project_path: project_path.into(),
+        }
     }
 }
 

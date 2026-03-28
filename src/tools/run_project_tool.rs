@@ -13,7 +13,7 @@
 use adk_rust::{AdkError, Result, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -132,7 +132,7 @@ impl RunProjectTool {
     /// Get the run command for a language.
     pub fn get_run_command(&self, language: Language, args: &[String]) -> (String, Vec<String>) {
         let args_str = args.join(" ");
-        
+
         match language {
             Language::Rust => {
                 let mut cmd_args = vec!["run".to_string()];
@@ -206,7 +206,10 @@ impl RunProjectTool {
     pub fn get_test_command(&self, language: Language) -> (String, Vec<String>) {
         match language {
             Language::Rust => ("cargo".to_string(), vec!["test".to_string()]),
-            Language::Go => ("go".to_string(), vec!["test".to_string(), "./...".to_string()]),
+            Language::Go => (
+                "go".to_string(),
+                vec!["test".to_string(), "./...".to_string()],
+            ),
             Language::Python => ("pytest".to_string(), vec![]),
             Language::Node | Language::TypeScript => ("npm".to_string(), vec!["test".to_string()]),
             Language::Java => {
@@ -216,7 +219,10 @@ impl RunProjectTool {
                     ("./gradlew".to_string(), vec!["test".to_string()])
                 }
             }
-            Language::Unknown => ("echo".to_string(), vec!["No test command available".to_string()]),
+            Language::Unknown => (
+                "echo".to_string(),
+                vec!["No test command available".to_string()],
+            ),
         }
     }
 
@@ -236,13 +242,17 @@ impl RunProjectTool {
             .stderr(Stdio::piped())
             .output();
 
-        let output = tokio::time::timeout(
-            std::time::Duration::from_secs(timeout_secs),
-            child,
-        )
-        .await
-        .map_err(|_| AdkError::Tool(format!("Command timed out after {}s: {} {}", timeout_secs, program, args.join(" "))))?
-        .map_err(|e| AdkError::Tool(format!("Failed to execute command: {}", e)))?;
+        let output = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), child)
+            .await
+            .map_err(|_| {
+                AdkError::Tool(format!(
+                    "Command timed out after {}s: {} {}",
+                    timeout_secs,
+                    program,
+                    args.join(" ")
+                ))
+            })?
+            .map_err(|e| AdkError::Tool(format!("Failed to execute command: {}", e)))?;
 
         let exit_code = output.status.code().unwrap_or(-1);
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -302,7 +312,7 @@ impl Tool for RunProjectTool {
 
         // Detect language
         let language = self.detect_language();
-        
+
         tracing::info!(
             operation = %args.operation,
             language = %language,
@@ -324,7 +334,7 @@ impl Tool for RunProjectTool {
 
         // Build command string for logging
         let command_str = format!("{} {}", program, cmd_args.join(" "));
-        
+
         tracing::debug!(command = %command_str, "Running command");
 
         // Execute the command
@@ -371,7 +381,7 @@ mod tests {
     fn test_run_project_tool_schema() {
         let tool = RunProjectTool::new("/tmp/test");
         let schema = tool.parameters_schema().unwrap();
-        
+
         assert_eq!(schema["type"], "object");
         assert!(schema["properties"]["operation"].is_object());
         assert!(schema["properties"]["args"].is_object());
@@ -381,7 +391,7 @@ mod tests {
     fn test_detect_language_rust() {
         let temp_dir = TempDir::new().unwrap();
         std::fs::write(temp_dir.path().join("Cargo.toml"), "[package]").unwrap();
-        
+
         let tool = RunProjectTool::new(temp_dir.path());
         assert_eq!(tool.detect_language(), Language::Rust);
     }
@@ -390,7 +400,7 @@ mod tests {
     fn test_detect_language_go() {
         let temp_dir = TempDir::new().unwrap();
         std::fs::write(temp_dir.path().join("go.mod"), "module test").unwrap();
-        
+
         let tool = RunProjectTool::new(temp_dir.path());
         assert_eq!(tool.detect_language(), Language::Go);
     }
@@ -399,7 +409,7 @@ mod tests {
     fn test_detect_language_python() {
         let temp_dir = TempDir::new().unwrap();
         std::fs::write(temp_dir.path().join("requirements.txt"), "").unwrap();
-        
+
         let tool = RunProjectTool::new(temp_dir.path());
         assert_eq!(tool.detect_language(), Language::Python);
     }
@@ -408,7 +418,7 @@ mod tests {
     fn test_detect_language_node() {
         let temp_dir = TempDir::new().unwrap();
         std::fs::write(temp_dir.path().join("package.json"), "{}").unwrap();
-        
+
         let tool = RunProjectTool::new(temp_dir.path());
         assert_eq!(tool.detect_language(), Language::Node);
     }
@@ -418,7 +428,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         std::fs::write(temp_dir.path().join("package.json"), "{}").unwrap();
         std::fs::write(temp_dir.path().join("tsconfig.json"), "{}").unwrap();
-        
+
         let tool = RunProjectTool::new(temp_dir.path());
         assert_eq!(tool.detect_language(), Language::TypeScript);
     }
@@ -426,7 +436,7 @@ mod tests {
     #[test]
     fn test_detect_language_unknown() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         let tool = RunProjectTool::new(temp_dir.path());
         assert_eq!(tool.detect_language(), Language::Unknown);
     }
@@ -435,7 +445,7 @@ mod tests {
     fn test_get_run_command_rust() {
         let tool = RunProjectTool::new("/tmp/test");
         let (program, args) = tool.get_run_command(Language::Rust, &[]);
-        
+
         assert_eq!(program, "cargo");
         assert_eq!(args, vec!["run"]);
     }
@@ -443,11 +453,9 @@ mod tests {
     #[test]
     fn test_get_run_command_rust_with_args() {
         let tool = RunProjectTool::new("/tmp/test");
-        let (program, args) = tool.get_run_command(
-            Language::Rust,
-            &["--help".to_string(), "-v".to_string()],
-        );
-        
+        let (program, args) =
+            tool.get_run_command(Language::Rust, &["--help".to_string(), "-v".to_string()]);
+
         assert_eq!(program, "cargo");
         assert_eq!(args, vec!["run", "--", "--help", "-v"]);
     }
@@ -456,7 +464,7 @@ mod tests {
     fn test_get_run_command_go() {
         let tool = RunProjectTool::new("/tmp/test");
         let (program, args) = tool.get_run_command(Language::Go, &[]);
-        
+
         assert_eq!(program, "go");
         assert_eq!(args, vec!["run", "."]);
     }
@@ -465,7 +473,7 @@ mod tests {
     fn test_get_test_command_rust() {
         let tool = RunProjectTool::new("/tmp/test");
         let (program, args) = tool.get_test_command(Language::Rust);
-        
+
         assert_eq!(program, "cargo");
         assert_eq!(args, vec!["test"]);
     }
@@ -474,7 +482,7 @@ mod tests {
     fn test_get_test_command_python() {
         let tool = RunProjectTool::new("/tmp/test");
         let (program, args) = tool.get_test_command(Language::Python);
-        
+
         assert_eq!(program, "pytest");
         assert!(args.is_empty());
     }

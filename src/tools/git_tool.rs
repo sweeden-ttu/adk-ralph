@@ -5,7 +5,7 @@
 use adk_rust::{Result, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
@@ -154,8 +154,9 @@ impl Tool for GitTool {
                     .lines()
                     .find(|line| line.contains('['))
                     .and_then(|line| {
-                        line.split_whitespace()
-                            .find(|word| word.len() >= 7 && word.chars().all(|c| c.is_ascii_hexdigit()))
+                        line.split_whitespace().find(|word| {
+                            word.len() >= 7 && word.chars().all(|c| c.is_ascii_hexdigit())
+                        })
                     })
                     .map(|s| s.to_string());
 

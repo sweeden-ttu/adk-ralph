@@ -218,7 +218,13 @@ impl Task {
 
         format!(
             "**Task ID**: {}\n**Title**: {}\n**Description**: {}\n**Priority**: {}\n**Status**: {}\n**Dependencies**: {}\n**Complexity**: {}",
-            self.id, self.title, self.description, self.priority, self.status, deps, self.estimated_complexity
+            self.id,
+            self.title,
+            self.description,
+            self.priority,
+            self.status,
+            deps,
+            self.estimated_complexity
         )
     }
 }
@@ -395,10 +401,7 @@ impl TaskList {
         for task in self.get_all_tasks() {
             for dep in &task.dependencies {
                 if !all_ids.contains(dep) {
-                    return Err(format!(
-                        "Task {} has unknown dependency: {}",
-                        task.id, dep
-                    ));
+                    return Err(format!("Task {} has unknown dependency: {}", task.id, dep));
                 }
             }
         }
@@ -540,9 +543,7 @@ impl TaskList {
 
     /// Check if all tasks are completed.
     pub fn is_complete(&self) -> bool {
-        self.get_all_tasks()
-            .iter()
-            .all(|t| t.status.is_terminal())
+        self.get_all_tasks().iter().all(|t| t.status.is_terminal())
     }
 }
 

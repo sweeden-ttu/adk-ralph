@@ -55,58 +55,74 @@ pub mod tools;
 // Re-export main types for convenience
 pub use error::{RalphError, Result};
 pub use models::{
+    // PRD types
+    AcceptanceCriterion,
     // Config types
     AgentModelConfig,
+    // Design types
+    Component,
     DebugLevel,
-    ModelConfig,
-    RalphConfig,
-    RalphConfigBuilder,
-    TelemetryConfig,
-    ValidationError,
+    DesignDocument,
+    FileStructure,
     MAX_ITERATIONS_LIMIT,
     MAX_RETRIES_LIMIT,
     MAX_TOKENS_LIMIT,
-    SUPPORTED_PROVIDERS,
-    // PRD types
-    AcceptanceCriterion,
-    PrdDocument,
-    PrdStats,
-    UserStory,
-    // Design types
-    Component,
-    DesignDocument,
-    FileStructure,
-    TechnologyStack,
+    ModelConfig,
     // Task types
     Phase,
-    Sprint,
-    Task,
-    TaskList,
-    TaskStatus,
+    PrdDocument,
+    PrdStats,
     // Progress types
     ProgressEntry,
     ProgressLog,
     ProgressSummary,
+    RalphConfig,
+    RalphConfigBuilder,
+    SUPPORTED_PROVIDERS,
+    Sprint,
+    Task,
+    TaskList,
+    TaskStatus,
+    TechnologyStack,
+    TelemetryConfig,
     TestResults,
+    UserStory,
+    ValidationError,
 };
 
 // Re-export tools
 pub use tools::{
-    // Core tools
-    FileTool, GitTool, ProgressTool, TaskTool, TestTool,
     // Interactive mode tools
-    AddFeatureMode, AddFeatureTool, GetTimeTool, Language, RunPipelineTool, RunProjectTool,
-    SearchResult, WebSearchTool,
+    AddFeatureMode,
+    AddFeatureTool,
+    // Core tools
+    FileTool,
+    GetTimeTool,
+    GitTool,
+    Language,
+    ProgressTool,
+    RunPipelineTool,
+    RunProjectTool,
+    SearchResult,
+    TaskTool,
+    TestTool,
+    WebSearchTool,
 };
 
 // Re-export agents
-pub use agents::{ArchitectAgent, CompletionStatus, PrdAgent, PrdAgentBuilder, PrdResult, RalphLoopAgent, RalphLoopAgentBuilder};
+pub use agents::{
+    ArchitectAgent, CompletionStatus, PrdAgent, PrdAgentBuilder, PrdResult, RalphLoopAgent,
+    RalphLoopAgentBuilder,
+};
 
 // Re-export orchestrator
 pub use orchestrator::{OrchestratorBuilder, OrchestratorState, PipelinePhase, RalphOrchestrator};
 
 // Re-export interactive mode
-pub use interactive::{InteractiveRepl, InteractiveReplBuilder, Message, OrchestratorAgent, OrchestratorAgentBuilder, ProjectContext, Session, REQUIRED_TOOLS};
+pub use interactive::{
+    InteractiveRepl, InteractiveReplBuilder, Message, OrchestratorAgent, OrchestratorAgentBuilder,
+    ProjectContext, REQUIRED_TOOLS, Session,
+};
 
 // Re-export output
 pub use output::{RalphOutput, process_event_part};

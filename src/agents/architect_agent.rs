@@ -149,7 +149,6 @@ Generate a JSON response with two sections: `design` and `tasks`.
 - Thorough design decisions covering scalability, security, error handling
 "#;
 
-
 /// Architect Agent that creates system design and task breakdown using LlmAgent.
 ///
 /// Uses the ADK agent framework with:
@@ -429,7 +428,6 @@ impl ArchitectAgentBuilder {
     }
 }
 
-
 /// Create an LLM model from configuration.
 async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
     use std::env;
@@ -471,15 +469,28 @@ async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> 
                         "GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set".into(),
                     )
                 })?;
-            let client = GeminiModel::new(api_key, &config.model_name).map_err(|e| RalphError::Model {
-                provider: "gemini".into(),
+            let client =
+                GeminiModel::new(api_key, &config.model_name).map_err(|e| RalphError::Model {
+                    provider: "gemini".into(),
+                    message: e.to_string(),
+                })?;
+            Arc::new(client)
+        }
+        "ollama" => {
+            use crate::models::AgentModelConfig;
+            use adk_rust::model::ollama::{OllamaConfig, OllamaModel};
+
+            let ollama_server_url = AgentModelConfig::ollama_server_url_from_env();
+            let ollama_config = OllamaConfig::with_host(&ollama_server_url, &config.model_name);
+            let client = OllamaModel::new(ollama_config).map_err(|e| RalphError::Model {
+                provider: "ollama".into(),
                 message: e.to_string(),
             })?;
             Arc::new(client)
         }
         provider => {
             return Err(RalphError::Configuration(format!(
-                "Unsupported model provider: {}. Supported: anthropic, openai, gemini",
+                "Unsupported model provider: {}. Supported: anthropic, openai, gemini, ollama",
                 provider
             )));
         }
@@ -511,7 +522,6 @@ mod tests {
     }
 }
 
-
 impl ArchitectAgent {
     /// Generate design and tasks by running the agent.
     ///
@@ -521,10 +531,12 @@ impl ArchitectAgent {
     /// 3. Runs the agent with PRD content (returns structured JSON)
     /// 4. Parses the JSON and writes design.md + tasks.json
     /// 5. Returns the parsed documents
-    pub async fn generate(&self) -> Result<(crate::models::DesignDocument, crate::models::TaskList)> {
-        use adk_rust::{Content, Part};
+    pub async fn generate(
+        &self,
+    ) -> Result<(crate::models::DesignDocument, crate::models::TaskList)> {
         use adk_rust::runner::{Runner, RunnerConfig};
         use adk_rust::session::{CreateRequest, InMemorySessionService, SessionService};
+        use adk_rust::{Content, Part};
         use futures::StreamExt;
 
         // Read the PRD file first
@@ -560,7 +572,8 @@ impl ArchitectAgent {
             plugin_manager: None,
             compaction_config: None,
             run_config: None,
-        }).map_err(|e| RalphError::Agent {
+        })
+        .map_err(|e| RalphError::Agent {
             agent: "architect".to_string(),
             message: e.to_string(),
         })?;
@@ -608,12 +621,14 @@ impl ArchitectAgent {
         }
 
         // Parse the JSON response
-        let architect_json: serde_json::Value = serde_json::from_str(&response_text)
-            .map_err(|e| RalphError::Design(format!(
-                "Failed to parse architect JSON: {} - Response: {}", 
-                e, 
-                &response_text[..response_text.len().min(500)]
-            )))?;
+        let architect_json: serde_json::Value =
+            serde_json::from_str(&response_text).map_err(|e| {
+                RalphError::Design(format!(
+                    "Failed to parse architect JSON: {} - Response: {}",
+                    e,
+                    &response_text[..response_text.len().min(500)]
+                ))
+            })?;
 
         // Convert JSON to DesignDocument and TaskList
         let design = json_to_design_document(&architect_json["design"])?;
@@ -642,15 +657,9 @@ fn json_to_design_document(json: &serde_json::Value) -> Result<crate::models::De
         .unwrap_or("Untitled Project")
         .to_string();
 
-    let overview = json["overview"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
+    let overview = json["overview"].as_str().unwrap_or("").to_string();
 
-    let language = json["language"]
-        .as_str()
-        .unwrap_or("rust")
-        .to_string();
+    let language = json["language"].as_str().unwrap_or("rust").to_string();
 
     let technology_stack = TechnologyStack {
         language: language.clone(),
@@ -664,14 +673,16 @@ fn json_to_design_document(json: &serde_json::Value) -> Result<crate::models::De
             .to_string(),
         dependencies: json["technology_stack"]["key_dependencies"]
             .as_array()
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default(),
         additional: std::collections::HashMap::new(),
     };
 
-    let component_diagram = json["architecture_diagram"]
-        .as_str()
-        .map(String::from);
+    let component_diagram = json["architecture_diagram"].as_str().map(String::from);
 
     let components: Vec<Component> = json["components"]
         .as_array()
@@ -683,11 +694,19 @@ fn json_to_design_document(json: &serde_json::Value) -> Result<crate::models::De
                     file_path: c["file"].as_str().map(String::from),
                     interface: c["key_functions"]
                         .as_array()
-                        .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                        .map(|a| {
+                            a.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
                         .unwrap_or_default(),
                     dependencies: c["dependencies"]
                         .as_array()
-                        .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                        .map(|a| {
+                            a.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
                         .unwrap_or_default(),
                 })
                 .collect()
@@ -725,19 +744,30 @@ fn json_to_design_document(json: &serde_json::Value) -> Result<crate::models::De
 }
 
 /// Parse file_structure from JSON - handles both new object format and legacy string format.
-fn parse_file_structure(json: &serde_json::Value, project_name: &str) -> Option<crate::models::FileStructure> {
+fn parse_file_structure(
+    json: &serde_json::Value,
+    project_name: &str,
+) -> Option<crate::models::FileStructure> {
     use crate::models::FileStructure;
 
     // Handle new structured format: { "directories": [...], "files": [...] }
     if json.is_object() {
         let directories: Vec<String> = json["directories"]
             .as_array()
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let files: Vec<String> = json["files"]
             .as_array()
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
         if files.is_empty() && directories.is_empty() {
@@ -774,12 +804,17 @@ fn parse_file_structure(json: &serde_json::Value, project_name: &str) -> Option<
             return None;
         }
 
-        tracing::warn!("Legacy string file_structure format detected - consider updating to structured format");
+        tracing::warn!(
+            "Legacy string file_structure format detected - consider updating to structured format"
+        );
 
         // Simple parsing: treat each non-empty line as a file path
         let mut root = FileStructure::directory(project_name, "Project root");
         for line in text.lines() {
-            let trimmed = line.trim().trim_start_matches("- ").trim_start_matches("* ");
+            let trimmed = line
+                .trim()
+                .trim_start_matches("- ")
+                .trim_start_matches("* ");
             if !trimmed.is_empty() && !trimmed.starts_with('#') {
                 let clean_path = clean_path(trimmed, project_name);
                 if !clean_path.is_empty() {
@@ -892,23 +927,40 @@ fn json_to_task_list(json: &serde_json::Value, project: &str) -> Result<crate::m
                         status: TaskStatus::Pending,
                         dependencies: t["dependencies"]
                             .as_array()
-                            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                            .map(|a| {
+                                a.iter()
+                                    .filter_map(|v| v.as_str().map(String::from))
+                                    .collect()
+                            })
                             .unwrap_or_default(),
                         user_story_id: t["user_story_id"].as_str().map(String::from),
                         estimated_complexity: complexity,
                         files_created: t["files_to_create"]
                             .as_array()
-                            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                            .map(|a| {
+                                a.iter()
+                                    .filter_map(|v| v.as_str().map(String::from))
+                                    .collect()
+                            })
                             .unwrap_or_default(),
                         files_modified: t["files_to_modify"]
                             .as_array()
-                            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                            .map(|a| {
+                                a.iter()
+                                    .filter_map(|v| v.as_str().map(String::from))
+                                    .collect()
+                            })
                             .unwrap_or_default(),
                         commit_hash: None,
                         attempts: 0,
                         notes: t["acceptance_criteria"]
                             .as_array()
-                            .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join("\n"))
+                            .map(|a| {
+                                a.iter()
+                                    .filter_map(|v| v.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join("\n")
+                            })
                             .unwrap_or_default(),
                     }
                 })

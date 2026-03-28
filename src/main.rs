@@ -12,7 +12,10 @@
 //! RALPH_MODEL_PROVIDER=anthropic ralph "Build a REST API"
 //! ```
 
-use adk_ralph::{DebugLevel, InteractiveRepl, PipelinePhase, RalphConfig, RalphOrchestrator, RalphOutput, Result, TelemetryConfig};
+use adk_ralph::{
+    DebugLevel, InteractiveRepl, PipelinePhase, RalphConfig, RalphOrchestrator, RalphOutput,
+    Result, TelemetryConfig,
+};
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use tracing::info;
@@ -88,7 +91,7 @@ enum Commands {
         /// Resume previous session
         #[arg(long)]
         resume: bool,
-        
+
         /// Auto-approve all changes without confirmation
         #[arg(long)]
         auto_approve: bool,
@@ -96,20 +99,23 @@ enum Commands {
 }
 
 /// Initialize telemetry based on configuration and debug level.
-fn init_telemetry(config: &TelemetryConfig, debug_level: DebugLevel) -> std::result::Result<(), Box<dyn std::error::Error>> {
-    use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-    
+fn init_telemetry(
+    config: &TelemetryConfig,
+    debug_level: DebugLevel,
+) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+
     // Determine log level based on debug level
     let log_level = match debug_level {
         DebugLevel::Minimal | DebugLevel::Normal => "error", // Suppress INFO logs for clean output
         DebugLevel::Verbose => "warn",
         DebugLevel::Debug => &config.log_level, // Use configured level for debug mode
     };
-    
+
     // For minimal/normal, we want clean output without tracing logs
     if matches!(debug_level, DebugLevel::Minimal | DebugLevel::Normal) {
-        let filter = EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new(log_level));
+        let filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(log_level));
         tracing_subscriber::registry()
             .with(fmt::layer().with_target(false))
             .with(filter)
@@ -119,8 +125,8 @@ fn init_telemetry(config: &TelemetryConfig, debug_level: DebugLevel) -> std::res
 
     if !config.enabled {
         // If telemetry is disabled, just set up basic logging
-        let filter = EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new(log_level));
+        let filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(log_level));
         tracing_subscriber::registry()
             .with(fmt::layer().with_target(false))
             .with(filter)
@@ -188,19 +194,25 @@ fn print_config(config: &RalphConfig) {
         config.agents.ralph_model.model_name
     );
     println!("  Max Iterations:  {}", config.max_iterations);
-    println!("  Debug Level:     {}", config.debug_level.to_string().cyan());
+    println!(
+        "  Debug Level:     {}",
+        config.debug_level.to_string().cyan()
+    );
     println!("  Project Path:    {}", config.project_path);
     println!();
 }
 
 fn print_status(orchestrator: &RalphOrchestrator) {
     println!("{}", "Pipeline Status:".yellow().bold());
-    println!("  Current Phase: {}", orchestrator.phase().to_string().cyan());
+    println!(
+        "  Current Phase: {}",
+        orchestrator.phase().to_string().cyan()
+    );
     println!();
 
     // Check for existing artifacts
     println!("{}", "Artifacts:".yellow().bold());
-    
+
     let prd_status = if orchestrator.prd_exists() {
         "✓ exists".green()
     } else {
@@ -304,10 +316,10 @@ async fn resume_pipeline(config: RalphConfig, phase: PipelinePhase, prompt: &str
 /// - 6.3: WHERE the user runs with `--auto-approve`, THE System SHALL skip confirmations
 async fn run_interactive_chat(config: RalphConfig, resume: bool, auto_approve: bool) -> Result<()> {
     use std::path::PathBuf;
-    
+
     // Determine project path from config
     let project_path = PathBuf::from(&config.project_path);
-    
+
     // Build the interactive REPL
     let mut repl = InteractiveRepl::builder()
         .config(config)
@@ -316,10 +328,10 @@ async fn run_interactive_chat(config: RalphConfig, resume: bool, auto_approve: b
         .auto_approve(auto_approve)
         .build()
         .await?;
-    
+
     // Run the REPL loop
     repl.run().await?;
-    
+
     Ok(())
 }
 
@@ -346,7 +358,7 @@ async fn main() -> Result<()> {
             let cwd = std::env::current_dir()
                 .map(|p| p.display().to_string())
                 .unwrap_or_else(|_| ".".to_string());
-            
+
             eprintln!("{}: {}", "Configuration Error".red().bold(), e);
             eprintln!();
             eprintln!("Create a {} file at:", ".env".cyan());
@@ -430,7 +442,10 @@ async fn main() -> Result<()> {
             println!("{}", "Configuration is valid!".green());
         }
 
-        Some(Commands::Chat { resume, auto_approve }) => {
+        Some(Commands::Chat {
+            resume,
+            auto_approve,
+        }) => {
             run_interactive_chat(config, resume, auto_approve).await?;
         }
 

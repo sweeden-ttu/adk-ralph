@@ -1,8 +1,8 @@
 //! Tests for Ralph configuration.
 
 use adk_ralph::{
-    AgentModelConfig, ModelConfig, RalphConfig, TelemetryConfig, ValidationError,
-    MAX_ITERATIONS_LIMIT, MAX_RETRIES_LIMIT, MAX_TOKENS_LIMIT, SUPPORTED_PROVIDERS,
+    AgentModelConfig, MAX_ITERATIONS_LIMIT, MAX_RETRIES_LIMIT, MAX_TOKENS_LIMIT, ModelConfig,
+    RalphConfig, SUPPORTED_PROVIDERS, TelemetryConfig, ValidationError,
 };
 
 #[test]
@@ -266,15 +266,15 @@ fn test_model_name_with_control_chars() {
 #[test]
 fn test_temperature_nan_and_infinity() {
     let mut config = ModelConfig::default();
-    
+
     config.temperature = f32::NAN;
     let err = config.validate().unwrap_err();
     assert_eq!(err.field, "temperature");
-    
+
     config.temperature = f32::INFINITY;
     let err = config.validate().unwrap_err();
     assert_eq!(err.field, "temperature");
-    
+
     config.temperature = f32::NEG_INFINITY;
     let err = config.validate().unwrap_err();
     assert_eq!(err.field, "temperature");

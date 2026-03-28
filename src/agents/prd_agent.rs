@@ -47,7 +47,6 @@ Match the complexity of your output to the user's request:
 - Derive it naturally from the project name
 "#;
 
-
 /// Result of PRD generation, includes the document and the project directory.
 #[derive(Debug, Clone)]
 pub struct PrdResult {
@@ -247,7 +246,6 @@ impl PrdAgentBuilder {
     }
 }
 
-
 /// Create an LLM model from configuration.
 async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> {
     use std::env;
@@ -289,17 +287,28 @@ async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> 
                         "GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set".into(),
                     )
                 })?;
-            let client = GeminiModel::new(api_key, &config.model_name).map_err(|e| {
-                RalphError::Model {
+            let client =
+                GeminiModel::new(api_key, &config.model_name).map_err(|e| RalphError::Model {
                     provider: "gemini".into(),
                     message: e.to_string(),
-                }
+                })?;
+            Arc::new(client)
+        }
+        "ollama" => {
+            use crate::models::AgentModelConfig;
+            use adk_rust::model::ollama::{OllamaConfig, OllamaModel};
+
+            let ollama_server_url = AgentModelConfig::ollama_server_url_from_env();
+            let ollama_config = OllamaConfig::with_host(&ollama_server_url, &config.model_name);
+            let client = OllamaModel::new(ollama_config).map_err(|e| RalphError::Model {
+                provider: "ollama".into(),
+                message: e.to_string(),
             })?;
             Arc::new(client)
         }
         provider => {
             return Err(RalphError::Configuration(format!(
-                "Unsupported model provider: {}. Supported: anthropic, openai, gemini",
+                "Unsupported model provider: {}. Supported: anthropic, openai, gemini, ollama",
                 provider
             )));
         }
@@ -343,7 +352,6 @@ mod tests {
     }
 }
 
-
 impl PrdAgent {
     /// Generate a PRD from a user prompt by running the agent.
     ///
@@ -353,9 +361,9 @@ impl PrdAgent {
     /// 3. Creates the project folder and writes the PRD inside it
     /// 4. Returns the parsed PRD document and project directory path
     pub async fn generate(&self, prompt: &str) -> Result<PrdResult> {
-        use adk_rust::{Content, Part};
         use adk_rust::runner::{Runner, RunnerConfig};
         use adk_rust::session::{CreateRequest, InMemorySessionService, SessionService};
+        use adk_rust::{Content, Part};
         use futures::StreamExt;
 
         // Create session service
@@ -386,7 +394,8 @@ impl PrdAgent {
             plugin_manager: None,
             compaction_config: None,
             run_config: None,
-        }).map_err(|e| RalphError::Agent {
+        })
+        .map_err(|e| RalphError::Agent {
             agent: "prd".to_string(),
             message: e.to_string(),
         })?;
@@ -431,8 +440,13 @@ impl PrdAgent {
         }
 
         // Parse the JSON response
-        let prd_json: serde_json::Value = serde_json::from_str(&response_text)
-            .map_err(|e| RalphError::Prd(format!("Failed to parse PRD JSON: {} - Response: {}", e, &response_text[..response_text.len().min(500)])))?;
+        let prd_json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| {
+            RalphError::Prd(format!(
+                "Failed to parse PRD JSON: {} - Response: {}",
+                e,
+                &response_text[..response_text.len().min(500)]
+            ))
+        })?;
 
         // Convert JSON to PrdDocument
         let prd = json_to_prd_document(&prd_json)?;
@@ -448,7 +462,9 @@ impl PrdAgent {
         if project_dir.exists() {
             let mut counter = 2u32;
             loop {
-                let candidate = self.project_path.join(format!("{}-{}", folder_name, counter));
+                let candidate = self
+                    .project_path
+                    .join(format!("{}-{}", folder_name, counter));
                 if !candidate.exists() {
                     project_dir = candidate;
                     break;
@@ -457,8 +473,13 @@ impl PrdAgent {
             }
         }
 
-        std::fs::create_dir_all(&project_dir)
-            .map_err(|e| RalphError::Prd(format!("Failed to create project folder '{}': {}", project_dir.display(), e)))?;
+        std::fs::create_dir_all(&project_dir).map_err(|e| {
+            RalphError::Prd(format!(
+                "Failed to create project folder '{}': {}",
+                project_dir.display(),
+                e
+            ))
+        })?;
 
         // Write the PRD as markdown inside the project folder
         let prd_path = project_dir.join("prd.md");
@@ -479,10 +500,7 @@ fn json_to_prd_document(json: &serde_json::Value) -> Result<crate::models::PrdDo
         .unwrap_or("Untitled Project")
         .to_string();
 
-    let overview = json["overview"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
+    let overview = json["overview"].as_str().unwrap_or("").to_string();
 
     let user_stories: Vec<UserStory> = json["user_stories"]
         .as_array()
@@ -495,19 +513,17 @@ fn json_to_prd_document(json: &serde_json::Value) -> Result<crate::models::PrdDo
                         story["story"].as_str().unwrap_or(""),
                         story["priority"].as_i64().unwrap_or(3) as u32,
                     );
-                    
+
                     // Add acceptance criteria
                     if let Some(criteria) = story["acceptance_criteria"].as_array() {
                         for (i, crit) in criteria.iter().enumerate() {
                             if let Some(text) = crit.as_str() {
-                                us.acceptance_criteria.push(AcceptanceCriterion::new(
-                                    (i + 1).to_string(),
-                                    text,
-                                ));
+                                us.acceptance_criteria
+                                    .push(AcceptanceCriterion::new((i + 1).to_string(), text));
                             }
                         }
                     }
-                    
+
                     us
                 })
                 .collect()

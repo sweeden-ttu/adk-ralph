@@ -1,0 +1,216 @@
+{
+  "project": "research-pipeline",
+  "language": "rust",
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Foundation",
+      "sprints": [
+        {
+          "id": "sprint-1",
+          "name": "Crate layout and CLI",
+          "tasks": [
+            {
+              "id": "TASK-001",
+              "title": "Add dependencies and lib/binary layout",
+              "description": "Add clap with derive to Cargo.toml; create src/lib.rs with Region enum (central_tx, lubbock_tx, speedwell_tn), slug(), and re-exports; update package description",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": [],
+              "user_story_id": "US-006",
+              "estimated_complexity": "low"
+            },
+            {
+              "id": "TASK-002",
+              "title": "Implement clap CLI",
+              "description": "main.rs: --region, --output-root (default ./runs), --dry-run, optional --skip-publish; resolve run_dir as output-root/region_slug/YYYY-MM-DD; load dotenvy",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-001"],
+              "user_story_id": "US-006",
+              "estimated_complexity": "low"
+            },
+            {
+              "id": "TASK-003",
+              "title": "Add JSON Schema files",
+              "description": "Create schemas/property_candidates.schema.json and schemas/business_viability.schema.json per PRD; embed or load text for synthesis prompt",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-001"],
+              "user_story_id": "US-005",
+              "estimated_complexity": "medium"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Agents and graph",
+      "sprints": [
+        {
+          "id": "sprint-2",
+          "name": "Graph implementation",
+          "tasks": [
+            {
+              "id": "TASK-004",
+              "title": "Region-specific property instructions",
+              "description": "regions.rs: three PROPERTY_SEARCH_* constants (Central TX Killeen-Austin, Lubbock South Plains, Speedwell East TN) steering google_search toward local MLS, land portals, auctions, brokers",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-001"],
+              "user_story_id": "US-001",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-005",
+              "title": "Business viability agent",
+              "description": "regions.rs: BUSINESS_VIABILITY_INSTRUCTION; plant-only competitors; viability qualitative score; GoogleSearchTool",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-004"],
+              "user_story_id": "US-004",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-006",
+              "title": "Synthesis agent without tools",
+              "description": "Instruction includes schema summaries; require fenced json block (property_candidates + business_viability keys) and fenced markdown block for executive summary",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-003", "TASK-005"],
+              "user_story_id": "US-005",
+              "estimated_complexity": "medium"
+            },
+            {
+              "id": "TASK-007",
+              "title": "Wire StateGraph through artifact_writer",
+              "description": "graph.rs: AgentNodes property_search, business_viability, synthesis; artifact_writer; channels per design.md; START to artifact_writer; then edge to memory_store (TASK-010)",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-006"],
+              "user_story_id": "US-001",
+              "estimated_complexity": "high"
+            },
+            {
+              "id": "TASK-008",
+              "title": "Artifact FunctionNode",
+              "description": "artifacts.rs: extract fenced json/markdown; write property_candidates.json, business_viability.json, summary.md, manifest.json; on failure write synthesis_raw.txt; unit tests for fence parsing",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-007"],
+              "user_story_id": "US-005",
+              "estimated_complexity": "medium"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Persistence and embeddings",
+      "sprints": [
+        {
+          "id": "sprint-3a",
+          "name": "Memory database node",
+          "tasks": [
+            {
+              "id": "TASK-010",
+              "title": "Schema and db module",
+              "description": "Add migrations/ and src/db.rs: runs table, listings, embedding_chunks, learnings; choose SQLite+vec or documented alternative; sqlx or rusqlite",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-008"],
+              "user_story_id": "US-008",
+              "estimated_complexity": "high"
+            },
+            {
+              "id": "TASK-011",
+              "title": "Embedding ingestion",
+              "description": "Chunk property_findings, business_analysis, synthesis; call embedding API (Gemini or other); store vectors + metadata; link to run_id and listing keys",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-010"],
+              "user_story_id": "US-008",
+              "estimated_complexity": "high"
+            },
+            {
+              "id": "TASK-012",
+              "title": "memory_store FunctionNode",
+              "description": "After artifact_writer, persist manifest, state snapshot, listing rows, embeddings; expose retrieve_context(listing_id, k) for publish pipeline",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-011"],
+              "user_story_id": "US-008",
+              "estimated_complexity": "medium"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Jekyll and presentation",
+      "sprints": [
+        {
+          "id": "sprint-4",
+          "name": "GitHub Pages portfolio",
+          "tasks": [
+            {
+              "id": "TASK-013",
+              "title": "Jekyll Pages agent module",
+              "description": "src/publish/jekyll.rs: read artifacts + DB; emit _config.yml, layouts, collection properties with front matter; assets; GitHub Pages conventions",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-012"],
+              "user_story_id": "US-009",
+              "estimated_complexity": "high"
+            },
+            {
+              "id": "TASK-014",
+              "title": "Presentation expert agent",
+              "description": "LLM-driven module: per listing generate farm business proposal, biography, sales contract draft with price analysis and disclaimers; write markdown into Jekyll content dirs",
+              "priority": 1,
+              "status": "pending",
+              "dependencies": ["TASK-013"],
+              "user_story_id": "US-009",
+              "estimated_complexity": "high"
+            },
+            {
+              "id": "TASK-015",
+              "title": "Publish command and docs",
+              "description": "CLI publish subcommand or binary; wire --skip-publish on research; README: GitHub Actions / gh-pages; legal disclaimers on generated contracts",
+              "priority": 2,
+              "status": "pending",
+              "dependencies": ["TASK-014", "TASK-002"],
+              "user_story_id": "US-009",
+              "estimated_complexity": "medium"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "name": "Documentation",
+      "sprints": [
+        {
+          "id": "sprint-5",
+          "name": "README and scheduling",
+          "tasks": [
+            {
+              "id": "TASK-009",
+              "title": "README and scheduling examples",
+              "description": "README.md: build/run, env vars, cron and systemd for research; second schedule for publish; extension points farm-site and demographics",
+              "priority": 2,
+              "status": "pending",
+              "dependencies": ["TASK-015"],
+              "user_story_id": "US-007",
+              "estimated_complexity": "low"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -22,7 +22,7 @@ use crate::telemetry::{log_test_results, start_timing, test_execution_span, tool
 use adk_rust::{Result as AdkResult, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -256,13 +256,17 @@ impl TestTool {
             .stderr(Stdio::piped())
             .output();
 
-        let output = tokio::time::timeout(
-            std::time::Duration::from_secs(timeout_secs),
-            child,
-        )
-        .await
-        .map_err(|_| format!("Test command timed out after {}s: {} {}", timeout_secs, cmd, args.join(" ")))?
-        .map_err(|e| format!("Failed to execute test command: {}", e))?;
+        let output = tokio::time::timeout(std::time::Duration::from_secs(timeout_secs), child)
+            .await
+            .map_err(|_| {
+                format!(
+                    "Test command timed out after {}s: {} {}",
+                    timeout_secs,
+                    cmd,
+                    args.join(" ")
+                )
+            })?
+            .map_err(|e| format!("Failed to execute test command: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -289,13 +293,11 @@ impl TestTool {
         match language {
             Language::Rust => {
                 // Check for tests/ directory or #[test] in src/
-                root.join("tests").exists()
-                    || root.join("src").exists()
+                root.join("tests").exists() || root.join("src").exists()
             }
             Language::Python => {
                 // Check for tests/ or test_*.py files
-                root.join("tests").exists()
-                    || root.join("test").exists()
+                root.join("tests").exists() || root.join("test").exists()
             }
             Language::TypeScript | Language::JavaScript => {
                 // Check for __tests__/, *.test.ts, *.spec.ts
@@ -493,10 +495,11 @@ fn extract_number_before(s: &str, keyword: &str) -> Option<usize> {
     let lower = s.to_lowercase();
     if let Some(pos) = lower.find(keyword) {
         let before = &s[..pos];
-        before
-            .split_whitespace()
-            .rev()
-            .find_map(|word| word.trim_matches(|c: char| !c.is_numeric()).parse::<usize>().ok())
+        before.split_whitespace().rev().find_map(|word| {
+            word.trim_matches(|c: char| !c.is_numeric())
+                .parse::<usize>()
+                .ok()
+        })
     } else {
         None
     }
@@ -558,7 +561,7 @@ impl Tool for TestTool {
         // Create span for tool call
         let span = tool_call_span("test", operation);
         let _guard = span.enter();
-        
+
         // Start timing
         let _timing = start_timing(format!("test_tool_{}", operation));
 
@@ -610,7 +613,11 @@ impl Tool for TestTool {
                     .map_err(adk_rust::AdkError::Tool)?;
 
                 // Log test results event
-                log_test_results(result.results.passed, result.results.failed, result.results.skipped);
+                log_test_results(
+                    result.results.passed,
+                    result.results.failed,
+                    result.results.skipped,
+                );
 
                 Ok(json!({
                     "success": result.success,

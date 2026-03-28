@@ -23,12 +23,12 @@
 //! - `ralph_tool_duration_seconds` - Tool execution duration (histogram)
 //! - `ralph_tokens_used` - Tokens used per request (gauge)
 
-use opentelemetry::metrics::{Counter, Histogram, Meter, UpDownCounter};
 use opentelemetry::KeyValue;
-use std::sync::atomic::{AtomicU64, Ordering};
+use opentelemetry::metrics::{Counter, Histogram, Meter, UpDownCounter};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
-use tracing::{info_span, Span};
+use tracing::{Span, info_span};
 
 // Re-export tracing macros for convenience
 pub use tracing::{debug, error, info, instrument, trace, warn};
@@ -512,15 +512,15 @@ mod tests {
     #[test]
     fn test_metrics_increment() {
         let metrics = RalphMetrics::new();
-        
+
         assert_eq!(metrics.get_iterations(), 0);
         metrics.inc_iterations();
         assert_eq!(metrics.get_iterations(), 1);
-        
+
         assert_eq!(metrics.get_tasks_completed(), 0);
         metrics.inc_tasks_completed();
         assert_eq!(metrics.get_tasks_completed(), 1);
-        
+
         assert_eq!(metrics.get_tasks_failed(), 0);
         metrics.inc_tasks_failed();
         assert_eq!(metrics.get_tasks_failed(), 1);
@@ -529,14 +529,14 @@ mod tests {
     #[test]
     fn test_metrics_reset() {
         let metrics = RalphMetrics::new();
-        
+
         metrics.inc_iterations();
         metrics.inc_tasks_completed();
         metrics.inc_tasks_failed();
         metrics.add_tokens(100);
-        
+
         metrics.reset();
-        
+
         assert_eq!(metrics.get_iterations(), 0);
         assert_eq!(metrics.get_tasks_completed(), 0);
         assert_eq!(metrics.get_tasks_failed(), 0);

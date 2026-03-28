@@ -11,11 +11,11 @@
 use adk_rust::{AdkError, Result, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::models::{PrdDocument, TaskList, UserStory, AcceptanceCriterion};
+use crate::models::{AcceptanceCriterion, PrdDocument, TaskList, UserStory};
 
 /// Mode for adding features.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -91,7 +91,7 @@ impl AddFeatureTool {
                 "No PRD found. Run the pipeline first to create a project.".to_string(),
             ));
         }
-        
+
         PrdDocument::load_markdown(&path)
             .map_err(|e| AdkError::Tool(format!("Failed to load PRD: {}", e)))
     }
@@ -112,41 +112,39 @@ impl AddFeatureTool {
                 "No tasks found. Run the pipeline first to create a project.".to_string(),
             ));
         }
-        
-        TaskList::load(&path)
-            .map_err(|e| AdkError::Tool(format!("Failed to load tasks: {}", e)))
+
+        TaskList::load(&path).map_err(|e| AdkError::Tool(format!("Failed to load tasks: {}", e)))
     }
 
     /// Save the task list.
     fn save_tasks(&self, tasks: &TaskList) -> Result<()> {
         let path = self.tasks_path();
-        tasks.save(&path)
+        tasks
+            .save(&path)
             .map_err(|e| AdkError::Tool(format!("Failed to save tasks: {}", e)))
     }
 
     /// Generate the next user story ID.
     fn next_user_story_id(&self, prd: &PrdDocument) -> String {
-        let max_id = prd.user_stories.iter()
-            .filter_map(|s| {
-                s.id.strip_prefix("US-")
-                    .and_then(|n| n.parse::<u32>().ok())
-            })
+        let max_id = prd
+            .user_stories
+            .iter()
+            .filter_map(|s| s.id.strip_prefix("US-").and_then(|n| n.parse::<u32>().ok()))
             .max()
             .unwrap_or(0);
-        
+
         format!("US-{:03}", max_id + 1)
     }
 
     /// Generate the next task ID.
     fn next_task_id(&self, tasks: &TaskList) -> String {
-        let max_id = tasks.tasks.iter()
-            .filter_map(|t| {
-                t.id.strip_prefix("T-")
-                    .and_then(|n| n.parse::<u32>().ok())
-            })
+        let max_id = tasks
+            .tasks
+            .iter()
+            .filter_map(|t| t.id.strip_prefix("T-").and_then(|n| n.parse::<u32>().ok()))
             .max()
             .unwrap_or(0);
-        
+
         format!("T-{:03}", max_id + 1)
     }
 
@@ -154,51 +152,63 @@ impl AddFeatureTool {
     async fn add_incremental(&self, feature: &str) -> Result<Value> {
         // Load existing PRD
         let mut prd = self.load_prd()?;
-        
+
         // Create a new user story for the feature
         let story_id = self.next_user_story_id(&prd);
         let mut user_story = UserStory::new(
             &story_id,
             feature,
-            &format!("As a user, I want {}, so that I can enhance my workflow.", feature.to_lowercase()),
+            &format!(
+                "As a user, I want {}, so that I can enhance my workflow.",
+                feature.to_lowercase()
+            ),
             2, // Default priority
         );
-        
+
         // Add basic acceptance criteria
-        user_story.acceptance_criteria.push(AcceptanceCriterion::new(
-            "1",
-            &format!("WHEN the user requests {}, THE system SHALL provide the functionality", feature.to_lowercase()),
-        ));
-        
+        user_story
+            .acceptance_criteria
+            .push(AcceptanceCriterion::new(
+                "1",
+                &format!(
+                    "WHEN the user requests {}, THE system SHALL provide the functionality",
+                    feature.to_lowercase()
+                ),
+            ));
+
         prd.user_stories.push(user_story);
-        
+
         // Save updated PRD
         self.save_prd(&prd)?;
-        
+
         // Load and update tasks
         let mut tasks = self.load_tasks()?;
         let task_id = self.next_task_id(&tasks);
-        
+
         // Create a new task for the feature
         let task = crate::models::Task::new(
             &task_id,
             format!("Implement: {}", feature),
-            format!("Implement the {} feature as specified in {}", feature, story_id),
+            format!(
+                "Implement the {} feature as specified in {}",
+                feature, story_id
+            ),
             2, // Default priority
-        ).with_user_story(&story_id);
-        
+        )
+        .with_user_story(&story_id);
+
         tasks.tasks.push(task);
-        
+
         // Save updated tasks
         self.save_tasks(&tasks)?;
-        
+
         tracing::info!(
             feature = %feature,
             story_id = %story_id,
             task_id = %task_id,
             "Feature added incrementally"
         );
-        
+
         Ok(json!({
             "success": true,
             "mode": "incremental",
@@ -215,36 +225,44 @@ impl AddFeatureTool {
         // For pipeline mode, we update the PRD and signal that the design
         // phase should be re-run. The actual re-run would be handled by
         // the orchestrator calling run_pipeline or the architect agent.
-        
+
         // Load existing PRD
         let mut prd = self.load_prd()?;
-        
+
         // Create a new user story for the feature
         let story_id = self.next_user_story_id(&prd);
         let mut user_story = UserStory::new(
             &story_id,
             feature,
-            &format!("As a user, I want {}, so that I can enhance my workflow.", feature.to_lowercase()),
+            &format!(
+                "As a user, I want {}, so that I can enhance my workflow.",
+                feature.to_lowercase()
+            ),
             2, // Default priority
         );
-        
+
         // Add basic acceptance criteria
-        user_story.acceptance_criteria.push(AcceptanceCriterion::new(
-            "1",
-            &format!("WHEN the user requests {}, THE system SHALL provide the functionality", feature.to_lowercase()),
-        ));
-        
+        user_story
+            .acceptance_criteria
+            .push(AcceptanceCriterion::new(
+                "1",
+                &format!(
+                    "WHEN the user requests {}, THE system SHALL provide the functionality",
+                    feature.to_lowercase()
+                ),
+            ));
+
         prd.user_stories.push(user_story);
-        
+
         // Save updated PRD
         self.save_prd(&prd)?;
-        
+
         tracing::info!(
             feature = %feature,
             story_id = %story_id,
             "Feature added to PRD, pipeline mode requested"
         );
-        
+
         Ok(json!({
             "success": true,
             "mode": "pipeline",
@@ -348,7 +366,7 @@ mod tests {
     fn test_add_feature_tool_schema() {
         let tool = AddFeatureTool::new("/tmp/test");
         let schema = tool.parameters_schema().unwrap();
-        
+
         assert_eq!(schema["type"], "object");
         assert!(schema["properties"]["feature"].is_object());
         assert!(schema["properties"]["mode"].is_object());

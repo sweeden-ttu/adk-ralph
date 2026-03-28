@@ -20,7 +20,7 @@ use crate::telemetry::{start_timing, tool_call_span};
 use adk_rust::{Result as AdkResult, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -368,10 +368,10 @@ impl Tool for ProgressTool {
         // Create span for tool call
         let span = tool_call_span("progress", operation);
         let _guard = span.enter();
-        
+
         // Start timing
         let _timing = start_timing(format!("progress_tool_{}", operation));
-        
+
         info!(operation = %operation, "Executing progress tool");
 
         match operation {
@@ -383,7 +383,9 @@ impl Tool for ProgressTool {
             }
             "summary" => {
                 let tasks_remaining = args["tasks_remaining"].as_u64().unwrap_or(0) as usize;
-                self.summary(tasks_remaining).await.map_err(adk_rust::AdkError::Tool)
+                self.summary(tasks_remaining)
+                    .await
+                    .map_err(adk_rust::AdkError::Tool)
             }
             _ => Err(adk_rust::AdkError::Tool(format!(
                 "Unknown operation '{}'. Valid operations: read, append, summary",

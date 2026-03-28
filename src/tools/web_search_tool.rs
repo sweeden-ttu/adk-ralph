@@ -10,7 +10,7 @@
 use adk_rust::{AdkError, Result, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 /// Placeholder tool for web search functionality.
@@ -140,7 +140,7 @@ impl Tool for WebSearchTool {
         // - Bing Search API
         // - DuckDuckGo API
         // - SerpAPI
-        
+
         Ok(json!({
             "success": false,
             "message": "Web search API not configured",
@@ -164,7 +164,11 @@ pub struct SearchResult {
 
 impl SearchResult {
     /// Create a new search result.
-    pub fn new(title: impl Into<String>, url: impl Into<String>, snippet: impl Into<String>) -> Self {
+    pub fn new(
+        title: impl Into<String>,
+        url: impl Into<String>,
+        snippet: impl Into<String>,
+    ) -> Self {
         Self {
             title: title.into(),
             url: url.into(),
@@ -204,7 +208,7 @@ mod tests {
     fn test_web_search_tool_schema() {
         let tool = WebSearchTool::new();
         let schema = tool.parameters_schema().unwrap();
-        
+
         assert_eq!(schema["type"], "object");
         assert!(schema["properties"]["query"].is_object());
         assert!(schema["properties"]["max_results"].is_object());
@@ -229,7 +233,7 @@ mod tests {
             "https://example.com",
             "This is a test snippet",
         );
-        
+
         assert_eq!(result.title, "Test Title");
         assert_eq!(result.url, "https://example.com");
         assert_eq!(result.snippet, "This is a test snippet");
@@ -242,7 +246,7 @@ mod tests {
             "https://example.com",
             "This is a test snippet",
         );
-        
+
         let json = result.to_json();
         assert_eq!(json["title"], "Test Title");
         assert_eq!(json["url"], "https://example.com");

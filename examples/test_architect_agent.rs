@@ -61,8 +61,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("   Project: {}", tasks.project);
             println!("   Total Tasks: {}", tasks.tasks.len());
             for task in &tasks.tasks {
-                println!("     {} - {} (Priority: {}, Complexity: {})", 
-                    task.id, task.title, task.priority, task.estimated_complexity);
+                println!(
+                    "     {} - {} (Priority: {}, Complexity: {})",
+                    task.id, task.title, task.priority, task.estimated_complexity
+                );
             }
             println!();
             println!("📄 Files saved:");
@@ -71,18 +73,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             println!("❌ Error: {}", e);
-            
+
             // Check if files were created anyway
             let design_path = project_path.join("design.md");
             let tasks_path = project_path.join("tasks.json");
-            
+
             if design_path.exists() {
-                println!("📄 design.md exists ({} bytes)", 
-                    std::fs::metadata(&design_path).map(|m| m.len()).unwrap_or(0));
+                println!(
+                    "📄 design.md exists ({} bytes)",
+                    std::fs::metadata(&design_path)
+                        .map(|m| m.len())
+                        .unwrap_or(0)
+                );
             }
             if tasks_path.exists() {
-                println!("📄 tasks.json exists ({} bytes)",
-                    std::fs::metadata(&tasks_path).map(|m| m.len()).unwrap_or(0));
+                println!(
+                    "📄 tasks.json exists ({} bytes)",
+                    std::fs::metadata(&tasks_path).map(|m| m.len()).unwrap_or(0)
+                );
             }
         }
     }

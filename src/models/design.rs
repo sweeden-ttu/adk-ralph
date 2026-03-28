@@ -275,7 +275,9 @@ impl DesignDocument {
                 in_diagram = false;
                 continue;
             }
-            if line.starts_with("## Component Diagram") || line.starts_with("## Architecture Diagram") {
+            if line.starts_with("## Component Diagram")
+                || line.starts_with("## Architecture Diagram")
+            {
                 in_overview = false;
                 in_diagram = false;
                 continue;

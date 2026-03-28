@@ -11,7 +11,7 @@ use adk_rust::{Result, Tool, ToolContext};
 use async_trait::async_trait;
 use chrono::{DateTime, Local, Utc};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 /// Tool for getting the current date and time.
@@ -97,7 +97,7 @@ impl Tool for GetTimeTool {
 
         if use_local {
             let now: DateTime<Local> = Local::now();
-            
+
             Ok(json!({
                 "datetime": now.to_rfc3339(),
                 "formatted": now.format("%A, %B %d, %Y at %I:%M %p").to_string(),
@@ -108,7 +108,7 @@ impl Tool for GetTimeTool {
             }))
         } else {
             let now: DateTime<Utc> = Utc::now();
-            
+
             Ok(json!({
                 "datetime": now.to_rfc3339(),
                 "formatted": now.format("%A, %B %d, %Y at %I:%M %p UTC").to_string(),
@@ -142,7 +142,7 @@ mod tests {
     fn test_get_time_tool_schema() {
         let tool = GetTimeTool::new();
         let schema = tool.parameters_schema().unwrap();
-        
+
         assert_eq!(schema["type"], "object");
         assert!(schema["properties"]["timezone"].is_object());
     }

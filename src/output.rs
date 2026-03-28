@@ -93,12 +93,7 @@ impl RalphOutput {
     /// Print iteration progress (shown at Normal and above).
     pub fn iteration(&self, current: u32, max: usize) {
         if self.level.is_normal() {
-            println!(
-                "  {} iteration {}/{}",
-                "○".bright_black(),
-                current,
-                max
-            );
+            println!("  {} iteration {}/{}", "○".bright_black(), current, max);
         }
     }
 
@@ -124,12 +119,9 @@ impl RalphOutput {
         // Use carriage return to update in place
         print!(
             "\r  [{}] {}% ({}/{} tasks)  ",
-            bar,
-            percentage,
-            completed,
-            total
+            bar, percentage, completed, total
         );
-        
+
         // Flush to ensure it displays
         use std::io::Write;
         let _ = std::io::stdout().flush();
@@ -165,13 +157,8 @@ impl RalphOutput {
         };
 
         // Use carriage return to update in place
-        print!(
-            "\r  [{}] {}% │ {}  ",
-            bar,
-            percentage,
-            task_display.cyan()
-        );
-        
+        print!("\r  [{}] {}% │ {}  ", bar, percentage, task_display.cyan());
+
         // Flush to ensure it displays
         use std::io::Write;
         let _ = std::io::stdout().flush();
@@ -194,11 +181,7 @@ impl RalphOutput {
     /// Print a tool call (shown at Verbose and above).
     pub fn tool_call(&self, name: &str, args: &serde_json::Value) {
         if self.level.is_verbose() {
-            println!(
-                "\n  {} {}",
-                "🔧".bright_blue(),
-                name.bright_white().bold()
-            );
+            println!("\n  {} {}", "🔧".bright_blue(), name.bright_white().bold());
             if let Ok(pretty) = serde_json::to_string_pretty(args) {
                 for line in pretty.lines() {
                     println!("     {}", line.bright_black());
@@ -242,14 +225,21 @@ impl RalphOutput {
                     let passed = results.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
                     let failed = results.get("failed").and_then(|v| v.as_u64()).unwrap_or(0);
                     let skipped = results.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
-                    let all_passed = results.get("all_passed").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let all_passed = results
+                        .get("all_passed")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
 
                     if all_passed {
                         println!(
                             "    {} Tests passed: {} passed{}",
                             "✓".bright_green(),
                             passed.to_string().green(),
-                            if skipped > 0 { format!(", {} skipped", skipped) } else { String::new() }
+                            if skipped > 0 {
+                                format!(", {} skipped", skipped)
+                            } else {
+                                String::new()
+                            }
                         );
                     } else {
                         println!(
@@ -257,7 +247,11 @@ impl RalphOutput {
                             "✗".bright_red(),
                             passed,
                             failed.to_string().red(),
-                            if skipped > 0 { format!(", {} skipped", skipped) } else { String::new() }
+                            if skipped > 0 {
+                                format!(", {} skipped", skipped)
+                            } else {
+                                String::new()
+                            }
                         );
                         // Show a snippet of stderr if tests failed
                         if let Some(stderr) = response.get("stderr").and_then(|v| v.as_str()) {
@@ -265,7 +259,9 @@ impl RalphOutput {
                                 .lines()
                                 .filter(|l| {
                                     let lower = l.to_lowercase();
-                                    lower.contains("fail") || lower.contains("error") || lower.contains("assert")
+                                    lower.contains("fail")
+                                        || lower.contains("error")
+                                        || lower.contains("assert")
                                 })
                                 .take(3)
                                 .collect();
@@ -284,8 +280,12 @@ impl RalphOutput {
                 if let Some(op) = response.get("operation").and_then(|v| v.as_str()) {
                     match op {
                         "commit" => {
-                            if let Some(hash) = response.get("commit_hash").and_then(|v| v.as_str()) {
-                                let msg = response.get("message").and_then(|v| v.as_str()).unwrap_or("");
+                            if let Some(hash) = response.get("commit_hash").and_then(|v| v.as_str())
+                            {
+                                let msg = response
+                                    .get("message")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
                                 let short_msg = if msg.len() > 50 { &msg[..50] } else { msg };
                                 println!(
                                     "    {} Committed {} \"{}\"",
@@ -315,7 +315,10 @@ impl RalphOutput {
                 // Only show result for errors.
                 if let Some(false) = response.get("success").and_then(|v| v.as_bool()) {
                     if let Some(op) = response.get("operation").and_then(|v| v.as_str()) {
-                        let path = response.get("path").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        let path = response
+                            .get("path")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
                         println!(
                             "    {} Failed to {} {}",
                             "✗".bright_red(),
@@ -326,10 +329,17 @@ impl RalphOutput {
                 }
             }
             "run_project" => {
-                let success = response.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+                let success = response
+                    .get("success")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
                 if let Some(cmd) = response.get("command").and_then(|v| v.as_str()) {
                     if success {
-                        println!("    {} `{}` succeeded", "✓".bright_green(), cmd.bright_black());
+                        println!(
+                            "    {} `{}` succeeded",
+                            "✓".bright_green(),
+                            cmd.bright_black()
+                        );
                     } else {
                         println!("    {} `{}` failed", "✗".bright_red(), cmd.bright_black());
                         if let Some(stderr) = response.get("stderr").and_then(|v| v.as_str()) {
@@ -347,20 +357,12 @@ impl RalphOutput {
                 if let Some(task) = response.get("task") {
                     let id = task.get("id").and_then(|v| v.as_str()).unwrap_or("?");
                     let title = task.get("title").and_then(|v| v.as_str()).unwrap_or("");
-                    println!(
-                        "    {} Next: {} - {}",
-                        "→".bright_blue(),
-                        id.cyan(),
-                        title
-                    );
+                    println!("    {} Next: {} - {}", "→".bright_blue(), id.cyan(), title);
                 } else if let Some(true) = response.get("all_complete").and_then(|v| v.as_bool()) {
                     println!("    {} All tasks complete", "✓".bright_green());
-                } else if let Some(blocked) = response.get("blocked_count").and_then(|v| v.as_u64()) {
-                    println!(
-                        "    {} {} task(s) blocked",
-                        "⚠".bright_yellow(),
-                        blocked
-                    );
+                } else if let Some(blocked) = response.get("blocked_count").and_then(|v| v.as_u64())
+                {
+                    println!("    {} {} task(s) blocked", "⚠".bright_yellow(), blocked);
                 }
             }
             _ => {}
@@ -427,13 +429,22 @@ impl RalphOutput {
     }
 
     /// Print final summary (always shown except minimal only shows status).
-    pub fn summary(&self, iterations: u32, tasks_completed: usize, tasks_total: usize, success: bool) {
+    pub fn summary(
+        &self,
+        iterations: u32,
+        tasks_completed: usize,
+        tasks_total: usize,
+        success: bool,
+    ) {
         if self.level.is_minimal() {
             // Minimal: just the result
             if success {
                 println!("✓ Complete: {}/{} tasks", tasks_completed, tasks_total);
             } else {
-                println!("✗ Incomplete: {}/{} tasks in {} iterations", tasks_completed, tasks_total, iterations);
+                println!(
+                    "✗ Incomplete: {}/{} tasks in {} iterations",
+                    tasks_completed, tasks_total, iterations
+                );
             }
         } else {
             // Normal and above: formatted summary
@@ -468,7 +479,9 @@ pub fn process_event_part(output: &RalphOutput, part: &Part) {
         Part::FunctionCall { name, args, .. } => {
             output.tool_call(name, args);
         }
-        Part::FunctionResponse { function_response, .. } => {
+        Part::FunctionResponse {
+            function_response, ..
+        } => {
             // At Normal level, show concise result summaries for key tools
             output.tool_result_summary(&function_response.name, &function_response.response);
             // At Verbose+, show the full response

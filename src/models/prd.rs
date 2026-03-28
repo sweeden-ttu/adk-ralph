@@ -307,12 +307,7 @@ impl PrdDocument {
             .trim()
             .to_string();
 
-        let title = header
-            .split(':')
-            .nth(1)
-            .unwrap_or("")
-            .trim()
-            .to_string();
+        let title = header.split(':').nth(1).unwrap_or("").trim().to_string();
 
         *i += 1;
         let mut description = String::new();
@@ -410,7 +405,10 @@ impl PrdDocument {
 
             for criterion in &story.acceptance_criteria {
                 let check = if criterion.verified { "x" } else { " " };
-                md.push_str(&format!("- [{}] {}. {}\n", check, criterion.id, criterion.criterion));
+                md.push_str(&format!(
+                    "- [{}] {}. {}\n",
+                    check, criterion.id, criterion.criterion
+                ));
             }
 
             if !story.notes.is_empty() {
@@ -489,11 +487,7 @@ impl PrdDocument {
     /// Get completion statistics.
     pub fn get_stats(&self) -> PrdStats {
         let total = self.user_stories.len();
-        let completed = self
-            .user_stories
-            .iter()
-            .filter(|s| s.is_complete())
-            .count();
+        let completed = self.user_stories.iter().filter(|s| s.is_complete()).count();
         let in_progress = self
             .user_stories
             .iter()

@@ -21,7 +21,7 @@ fn load_env() {
 /// Helper to create a test orchestrator with a temporary directory.
 fn create_test_orchestrator(temp_dir: &TempDir) -> RalphOrchestrator {
     load_env();
-    
+
     let config = RalphConfig::builder()
         .project_path(temp_dir.path().to_string_lossy().to_string())
         .max_iterations(10)
@@ -68,8 +68,7 @@ fn create_sample_prd(temp_dir: &TempDir) -> PrdDocument {
 
     // Save the PRD
     let prd_path = temp_dir.path().join("prd.md");
-    prd.save_markdown(&prd_path)
-        .expect("Failed to save PRD");
+    prd.save_markdown(&prd_path).expect("Failed to save PRD");
 
     prd
 }
@@ -226,9 +225,11 @@ mod orchestrator_tests {
         assert_eq!(orchestrator.phase(), PipelinePhase::Design);
 
         // Cannot skip to Implementation without design/tasks
-        assert!(orchestrator
-            .skip_to_phase(PipelinePhase::Implementation)
-            .is_err());
+        assert!(
+            orchestrator
+                .skip_to_phase(PipelinePhase::Implementation)
+                .is_err()
+        );
     }
 
     #[test]
@@ -243,9 +244,11 @@ mod orchestrator_tests {
         let mut orchestrator = create_test_orchestrator(&temp_dir);
 
         // Can skip directly to Implementation
-        assert!(orchestrator
-            .skip_to_phase(PipelinePhase::Implementation)
-            .is_ok());
+        assert!(
+            orchestrator
+                .skip_to_phase(PipelinePhase::Implementation)
+                .is_ok()
+        );
         assert_eq!(orchestrator.phase(), PipelinePhase::Implementation);
     }
 }
@@ -391,7 +394,10 @@ mod artifact_validation_tests {
         for story in &prd.user_stories {
             assert!(!story.id.is_empty(), "User story must have ID");
             assert!(!story.title.is_empty(), "User story must have title");
-            assert!(story.priority >= 1 && story.priority <= 5, "Priority must be 1-5");
+            assert!(
+                story.priority >= 1 && story.priority <= 5,
+                "Priority must be 1-5"
+            );
             assert!(
                 !story.acceptance_criteria.is_empty(),
                 "User story must have acceptance criteria"
@@ -411,10 +417,7 @@ mod artifact_validation_tests {
             design.component_diagram.is_some(),
             "Design must have component diagram"
         );
-        assert!(
-            !design.components.is_empty(),
-            "Design must have components"
-        );
+        assert!(!design.components.is_empty(), "Design must have components");
         assert!(
             design.file_structure.is_some(),
             "Design must have file structure"
@@ -425,7 +428,10 @@ mod artifact_validation_tests {
         );
 
         let tech = design.technology_stack.as_ref().unwrap();
-        assert!(!tech.language.is_empty(), "Tech stack must specify language");
+        assert!(
+            !tech.language.is_empty(),
+            "Tech stack must specify language"
+        );
     }
 
     #[test]
@@ -436,7 +442,10 @@ mod artifact_validation_tests {
 
         // Validate task structure (Property 3)
         assert!(tasks.validate().is_ok(), "Task list should be valid");
-        assert!(!tasks.project.is_empty(), "Task list must have project name");
+        assert!(
+            !tasks.project.is_empty(),
+            "Task list must have project name"
+        );
         assert!(!tasks.language.is_empty(), "Task list must have language");
 
         for task in tasks.get_all_tasks() {
@@ -500,7 +509,10 @@ mod task_selection_tests {
         assert!(next.is_some(), "Should have a next task");
 
         let task = next.unwrap();
-        assert_eq!(task.id, "TASK-001", "Should select task with no dependencies first");
+        assert_eq!(
+            task.id, "TASK-001",
+            "Should select task with no dependencies first"
+        );
         assert_eq!(task.priority, 1, "Should be highest priority");
     }
 
@@ -558,7 +570,8 @@ mod file_persistence_tests {
         assert_eq!(loaded.project, original.project);
         // Overview may have additional metadata appended during save, so check it contains original
         assert!(
-            loaded.overview.contains(&original.overview) || original.overview.contains(&loaded.overview),
+            loaded.overview.contains(&original.overview)
+                || original.overview.contains(&loaded.overview),
             "Overview should be preserved (original: '{}', loaded: '{}')",
             original.overview,
             loaded.overview
@@ -602,10 +615,7 @@ mod file_persistence_tests {
 
         assert_eq!(loaded.project, original.project);
         assert_eq!(loaded.language, original.language);
-        assert_eq!(
-            loaded.get_all_tasks().len(),
-            original.get_all_tasks().len()
-        );
+        assert_eq!(loaded.get_all_tasks().len(), original.get_all_tasks().len());
     }
 }
 

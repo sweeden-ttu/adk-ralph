@@ -24,7 +24,7 @@ use crate::telemetry::{start_timing, tool_call_span};
 use adk_rust::{Result as AdkResult, Tool, ToolContext};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -365,36 +365,42 @@ impl Tool for TaskTool {
         // Create span for tool call
         let span = tool_call_span("tasks", operation);
         let _guard = span.enter();
-        
+
         // Start timing
         let _timing = start_timing(format!("task_tool_{}", operation));
-        
+
         info!(operation = %operation, "Executing task tool");
 
         match operation {
             "list" => self.list().await.map_err(adk_rust::AdkError::Tool),
             "get_next" => self.get_next().await.map_err(adk_rust::AdkError::Tool),
             "get" => {
-                let task_id = args["task_id"]
-                    .as_str()
-                    .ok_or_else(|| adk_rust::AdkError::Tool("Missing 'task_id' for get operation".to_string()))?;
-                self.get_task(task_id).await.map_err(adk_rust::AdkError::Tool)
+                let task_id = args["task_id"].as_str().ok_or_else(|| {
+                    adk_rust::AdkError::Tool("Missing 'task_id' for get operation".to_string())
+                })?;
+                self.get_task(task_id)
+                    .await
+                    .map_err(adk_rust::AdkError::Tool)
             }
             "update_status" => {
-                let task_id = args["task_id"]
-                    .as_str()
-                    .ok_or_else(|| adk_rust::AdkError::Tool("Missing 'task_id' for update_status".to_string()))?;
-                let status = args["status"]
-                    .as_str()
-                    .ok_or_else(|| adk_rust::AdkError::Tool("Missing 'status' for update_status".to_string()))?;
-                self.update_status(task_id, status).await.map_err(adk_rust::AdkError::Tool)
+                let task_id = args["task_id"].as_str().ok_or_else(|| {
+                    adk_rust::AdkError::Tool("Missing 'task_id' for update_status".to_string())
+                })?;
+                let status = args["status"].as_str().ok_or_else(|| {
+                    adk_rust::AdkError::Tool("Missing 'status' for update_status".to_string())
+                })?;
+                self.update_status(task_id, status)
+                    .await
+                    .map_err(adk_rust::AdkError::Tool)
             }
             "complete" => {
-                let task_id = args["task_id"]
-                    .as_str()
-                    .ok_or_else(|| adk_rust::AdkError::Tool("Missing 'task_id' for complete".to_string()))?;
+                let task_id = args["task_id"].as_str().ok_or_else(|| {
+                    adk_rust::AdkError::Tool("Missing 'task_id' for complete".to_string())
+                })?;
                 let commit_hash = args["commit_hash"].as_str().map(|s| s.to_string());
-                self.complete(task_id, commit_hash).await.map_err(adk_rust::AdkError::Tool)
+                self.complete(task_id, commit_hash)
+                    .await
+                    .map_err(adk_rust::AdkError::Tool)
             }
             _ => Err(adk_rust::AdkError::Tool(format!(
                 "Unknown operation '{}'. Valid operations: list, get_next, update_status, complete, get",

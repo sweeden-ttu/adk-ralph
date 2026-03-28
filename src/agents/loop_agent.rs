@@ -28,12 +28,12 @@
 //! - 7.4: WHEN starting each iteration, THE Ralph_Loop_Agent SHALL read `progress.json`
 
 use crate::models::{DesignDocument, ModelConfig, RalphConfig};
-use crate::output::{process_event_part, RalphOutput};
+use crate::output::{RalphOutput, process_event_part};
 use crate::tools::{FileTool, GitTool, ProgressTool, TaskTool, TestTool};
 use crate::{RalphError, Result};
 use adk_rust::agent::{LlmAgentBuilder, LoopAgent};
-use adk_rust::{Agent, Llm, Tool};
 use adk_rust::tool::ExitLoopTool;
+use adk_rust::{Agent, Llm, Tool};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -310,13 +310,16 @@ impl RalphLoopAgentBuilder {
         // Build instruction with design context if available
         let instruction = self.custom_instruction.unwrap_or_else(|| {
             let mut inst = RALPH_LOOP_INSTRUCTION.to_string();
-            
+
             // Try to add design context
             let design_path = self.project_path.join(&self.config.design_path);
             if let Ok(design) = DesignDocument::load_markdown(&design_path) {
                 inst.push_str("\n\n## Project Context\n\n");
                 inst.push_str(&format!("Project: {}\n", design.project));
-                inst.push_str(&format!("Project root: {} (all file paths are relative to this directory)\n", self.project_path.display()));
+                inst.push_str(&format!(
+                    "Project root: {} (all file paths are relative to this directory)\n",
+                    self.project_path.display()
+                ));
                 if let Some(ref tech) = design.technology_stack {
                     inst.push_str(&format!("Language: {}\n", tech.language));
                 }
@@ -324,13 +327,13 @@ impl RalphLoopAgentBuilder {
                     inst.push_str(&format!("\nOverview: {}\n", design.overview));
                 }
             }
-            
+
             // Add completion promise
             inst.push_str(&format!(
                 "\n\n## Completion Promise\n\nWhen all tasks are done, output: \"{}\"\n",
                 self.config.completion_promise
             ));
-            
+
             inst
         });
 
@@ -455,9 +458,9 @@ impl RalphLoopAgent {
     ///
     /// Output verbosity is controlled by the `debug_level` config setting.
     pub async fn run(&self) -> Result<CompletionStatus> {
-        use adk_rust::{Content, Part};
         use adk_rust::runner::{Runner, RunnerConfig};
         use adk_rust::session::{CreateRequest, InMemorySessionService, SessionService};
+        use adk_rust::{Content, Part};
         use futures::StreamExt;
 
         // Create output handler based on debug level
@@ -467,8 +470,14 @@ impl RalphLoopAgent {
         if output.level().is_normal() {
             output.phase("Ralph Loop Agent");
             if output.level().is_verbose() {
-                output.debug("config", &format!("project: {}", self.project_path.display()));
-                output.debug("config", &format!("max_iterations: {}", self.config.max_iterations));
+                output.debug(
+                    "config",
+                    &format!("project: {}", self.project_path.display()),
+                );
+                output.debug(
+                    "config",
+                    &format!("max_iterations: {}", self.config.max_iterations),
+                );
             }
         }
 
@@ -528,13 +537,19 @@ impl RalphLoopAgent {
         let mut iteration_count = 0u32;
         let mut tool_call_count = 0u32;
         let mut _current_task: Option<String> = None;
-        
+
         // Load task stats for progress bar
         let tasks_path = self.project_path.join(&self.config.tasks_path);
         let initial_tasks = crate::models::TaskList::load(&tasks_path).ok();
-        let total_tasks = initial_tasks.as_ref().map(|t| t.get_stats().total).unwrap_or(0);
-        let mut completed_tasks = initial_tasks.as_ref().map(|t| t.get_stats().completed).unwrap_or(0);
-        
+        let total_tasks = initial_tasks
+            .as_ref()
+            .map(|t| t.get_stats().total)
+            .unwrap_or(0);
+        let mut completed_tasks = initial_tasks
+            .as_ref()
+            .map(|t| t.get_stats().completed)
+            .unwrap_or(0);
+
         // Show initial progress bar
         if total_tasks > 0 {
             output.progress_bar(completed_tasks, total_tasks);
@@ -550,32 +565,48 @@ impl RalphLoopAgent {
                             // Track tool calls and detect task changes
                             if let Part::FunctionCall { name, args, .. } = part {
                                 tool_call_count += 1;
-                                
+
                                 // Detect task operations to show progress
                                 if name == "tasks" {
-                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str()) {
+                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str())
+                                    {
                                         match op {
                                             "get_next" => {
                                                 output.status("Getting next task...");
                                             }
                                             "update_status" => {
-                                                if let Some(task_id) = args.get("task_id").and_then(|v| v.as_str()) {
-                                                    if let Some(status) = args.get("status").and_then(|v| v.as_str()) {
+                                                if let Some(task_id) =
+                                                    args.get("task_id").and_then(|v| v.as_str())
+                                                {
+                                                    if let Some(status) =
+                                                        args.get("status").and_then(|v| v.as_str())
+                                                    {
                                                         if status == "in_progress" {
-                                                            _current_task = Some(task_id.to_string());
+                                                            _current_task =
+                                                                Some(task_id.to_string());
                                                             output.clear_line();
-                                                            output.task_start(task_id, "Starting implementation");
-                                                            output.progress_bar_with_task(completed_tasks, total_tasks, task_id);
+                                                            output.task_start(
+                                                                task_id,
+                                                                "Starting implementation",
+                                                            );
+                                                            output.progress_bar_with_task(
+                                                                completed_tasks,
+                                                                total_tasks,
+                                                                task_id,
+                                                            );
                                                         }
                                                     }
                                                 }
                                             }
                                             "complete" => {
-                                                if let Some(task_id) = args.get("task_id").and_then(|v| v.as_str()) {
+                                                if let Some(task_id) =
+                                                    args.get("task_id").and_then(|v| v.as_str())
+                                                {
                                                     completed_tasks += 1;
                                                     output.clear_line();
                                                     output.task_complete(task_id, true);
-                                                    output.progress_bar(completed_tasks, total_tasks);
+                                                    output
+                                                        .progress_bar(completed_tasks, total_tasks);
                                                     _current_task = None;
                                                 }
                                             }
@@ -583,39 +614,48 @@ impl RalphLoopAgent {
                                         }
                                     }
                                 }
-                                
+
                                 // Show file operations at normal level
                                 if name == "file" {
-                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str()) {
-                                        if let Some(path) = args.get("path").and_then(|v| v.as_str()) {
+                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str())
+                                    {
+                                        if let Some(path) =
+                                            args.get("path").and_then(|v| v.as_str())
+                                        {
                                             match op {
-                                                "write" => output.status(&format!("Writing {}", path)),
-                                                "read" => output.status(&format!("Reading {}", path)),
+                                                "write" => {
+                                                    output.status(&format!("Writing {}", path))
+                                                }
+                                                "read" => {
+                                                    output.status(&format!("Reading {}", path))
+                                                }
                                                 _ => {}
                                             }
                                         }
                                     }
                                 }
-                                
+
                                 // Show test runs
                                 if name == "test" {
-                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str()) {
+                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str())
+                                    {
                                         if op == "run" {
                                             output.status("Running tests...");
                                         }
                                     }
                                 }
-                                
+
                                 // Show git operations
                                 if name == "git" {
-                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str()) {
+                                    if let Some(op) = args.get("operation").and_then(|v| v.as_str())
+                                    {
                                         if op == "commit" {
                                             output.status("Committing changes...");
                                         }
                                     }
                                 }
                             }
-                            
+
                             // Output based on debug level (verbose shows all tool details)
                             process_event_part(&output, part);
                         }
@@ -719,17 +759,28 @@ async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> 
                         "GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set".into(),
                     )
                 })?;
-            let client = GeminiModel::new(api_key, &config.model_name).map_err(|e| {
-                RalphError::Model {
+            let client =
+                GeminiModel::new(api_key, &config.model_name).map_err(|e| RalphError::Model {
                     provider: "gemini".into(),
                     message: e.to_string(),
-                }
+                })?;
+            Arc::new(client)
+        }
+        "ollama" => {
+            use crate::models::AgentModelConfig;
+            use adk_rust::model::ollama::{OllamaConfig, OllamaModel};
+
+            let ollama_server_url = AgentModelConfig::ollama_server_url_from_env();
+            let ollama_config = OllamaConfig::with_host(&ollama_server_url, &config.model_name);
+            let client = OllamaModel::new(ollama_config).map_err(|e| RalphError::Model {
+                provider: "ollama".into(),
+                message: e.to_string(),
             })?;
             Arc::new(client)
         }
         provider => {
             return Err(RalphError::Configuration(format!(
-                "Unsupported model provider: {}. Supported: anthropic, openai, gemini",
+                "Unsupported model provider: {}. Supported: anthropic, openai, gemini, ollama",
                 provider
             )));
         }

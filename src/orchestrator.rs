@@ -183,7 +183,6 @@ impl RalphOrchestrator {
         self.project_path.join(&self.config.tasks_path).exists()
     }
 
-
     /// Run the requirements phase (PRD generation).
     ///
     /// This phase:
@@ -206,17 +205,17 @@ impl RalphOrchestrator {
         if prd_path.exists() {
             self.output.status("Found existing PRD, loading...");
             info!("PRD file already exists, loading it");
-            let prd = PrdDocument::load_markdown(&prd_path)
-                .map_err(RalphError::Prd)?;
+            let prd = PrdDocument::load_markdown(&prd_path).map_err(RalphError::Prd)?;
             self.state.prd = Some(prd.clone());
             self.state.phase = PipelinePhase::Design;
             return Ok(prd);
         }
 
         // Use PRD Agent to generate requirements
-        self.output.status("Generating requirements with PRD Agent...");
+        self.output
+            .status("Generating requirements with PRD Agent...");
         info!("Using PRD Agent to generate requirements");
-        
+
         let prd_agent = PrdAgent::builder()
             .model_config(self.config.agents.prd_model.clone())
             .output_path(&self.config.prd_path)
@@ -229,8 +228,11 @@ impl RalphOrchestrator {
         // Update project_path to the folder chosen by the LLM
         self.project_path = prd_result.project_dir;
 
-        self.output.status(&format!("Saved PRD to {}/{}",
-            self.project_path.display(), self.config.prd_path));
+        self.output.status(&format!(
+            "Saved PRD to {}/{}",
+            self.project_path.display(),
+            self.config.prd_path
+        ));
         info!(
             prd_path = %prd_path.display(),
             user_stories = prd_result.prd.user_stories.len(),
@@ -272,22 +274,22 @@ impl RalphOrchestrator {
         let tasks_path = self.project_path.join(&self.config.tasks_path);
 
         if design_path.exists() && tasks_path.exists() {
-            self.output.status("Found existing design and tasks, loading...");
+            self.output
+                .status("Found existing design and tasks, loading...");
             info!("Design and tasks files already exist, loading them");
-            let design = DesignDocument::load_markdown(&design_path)
-                .map_err(RalphError::Design)?;
-            let tasks = TaskList::load(&tasks_path)
-                .map_err(RalphError::Task)?;
-            
+            let design = DesignDocument::load_markdown(&design_path).map_err(RalphError::Design)?;
+            let tasks = TaskList::load(&tasks_path).map_err(RalphError::Task)?;
+
             self.state.design = Some(design.clone());
             self.state.tasks = Some(tasks.clone());
             self.state.phase = PipelinePhase::Implementation;
-            
+
             return Ok((design, tasks));
         }
 
         // Create and run the Architect Agent
-        self.output.status("Generating system design with Architect Agent...");
+        self.output
+            .status("Generating system design with Architect Agent...");
         let architect = ArchitectAgent::builder()
             .model_config(self.config.agents.architect_model.clone())
             .prd_path(&self.config.prd_path)
@@ -317,7 +319,6 @@ impl RalphOrchestrator {
 
         Ok((design, tasks))
     }
-
 
     /// Run the implementation phase (Ralph Loop Agent).
     ///
@@ -404,16 +405,17 @@ impl RalphOrchestrator {
         // Phase 1: Requirements
         self.output.phase("Phase 1: Requirements Generation");
         self.output.status("Analyzing project description...");
-        
+
         let prd = self.run_requirements_phase(prompt).await?;
-        
+
         // Show user stories summary
         self.output.phase_complete(&format!(
             "Generated {} user stories:",
             prd.user_stories.len()
         ));
         for story in &prd.user_stories {
-            self.output.list_item(&format!("{}: {}", story.id, story.title));
+            self.output
+                .list_item(&format!("{}: {}", story.id, story.title));
         }
         info!(
             user_stories = prd.user_stories.len(),
@@ -423,9 +425,9 @@ impl RalphOrchestrator {
         // Phase 2: Design
         self.output.phase("Phase 2: Design & Task Breakdown");
         self.output.status("Creating system architecture...");
-        
+
         let (design, tasks) = self.run_design_phase().await?;
-        
+
         // Show tasks summary
         self.output.phase_complete(&format!(
             "Created {} components, {} tasks:",
@@ -433,7 +435,8 @@ impl RalphOrchestrator {
             tasks.get_stats().total
         ));
         for task in &tasks.tasks {
-            self.output.list_item(&format!("{}: {}", task.id, task.title));
+            self.output
+                .list_item(&format!("{}: {}", task.id, task.title));
         }
         info!(
             components = design.components.len(),
@@ -444,9 +447,9 @@ impl RalphOrchestrator {
         // Phase 3: Implementation
         self.output.phase("Phase 3: Implementation");
         self.output.status("Starting task implementation loop...");
-        
+
         let status = self.run_implementation_phase().await?;
-        
+
         info!(status = %status, "Implementation phase complete");
 
         Ok(status)
@@ -464,11 +467,10 @@ impl RalphOrchestrator {
                 // Load PRD if not in state
                 if self.state.prd.is_none() {
                     let prd_path = self.project_path.join(&self.config.prd_path);
-                    let prd = PrdDocument::load_markdown(&prd_path)
-                        .map_err(RalphError::Prd)?;
+                    let prd = PrdDocument::load_markdown(&prd_path).map_err(RalphError::Prd)?;
                     self.state.prd = Some(prd);
                 }
-                
+
                 let (_, _) = self.run_design_phase().await?;
                 self.run_implementation_phase().await
             }
@@ -476,17 +478,16 @@ impl RalphOrchestrator {
                 // Load design and tasks if not in state
                 if self.state.design.is_none() {
                     let design_path = self.project_path.join(&self.config.design_path);
-                    let design = DesignDocument::load_markdown(&design_path)
-                        .map_err(RalphError::Design)?;
+                    let design =
+                        DesignDocument::load_markdown(&design_path).map_err(RalphError::Design)?;
                     self.state.design = Some(design);
                 }
                 if self.state.tasks.is_none() {
                     let tasks_path = self.project_path.join(&self.config.tasks_path);
-                    let tasks = TaskList::load(&tasks_path)
-                        .map_err(RalphError::Task)?;
+                    let tasks = TaskList::load(&tasks_path).map_err(RalphError::Task)?;
                     self.state.tasks = Some(tasks);
                 }
-                
+
                 self.run_implementation_phase().await
             }
             PipelinePhase::Complete => {
@@ -535,7 +536,6 @@ impl RalphOrchestrator {
         Ok(())
     }
 }
-
 
 /// Builder for creating a RalphOrchestrator with fluent API.
 #[derive(Debug, Clone, Default)]
@@ -607,10 +607,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(orchestrator.phase(), PipelinePhase::Requirements);
-        assert_eq!(
-            orchestrator.project_path().to_string_lossy(),
-            "/tmp/test"
-        );
+        assert_eq!(orchestrator.project_path().to_string_lossy(), "/tmp/test");
     }
 
     #[test]

@@ -12,8 +12,8 @@
 
 use crate::models::{ModelConfig, RalphConfig};
 use crate::tools::{
-    AddFeatureTool, FileTool, GetTimeTool, GitTool, ProgressTool, RunPipelineTool,
-    RunProjectTool, TaskTool, WebSearchTool,
+    AddFeatureTool, FileTool, GetTimeTool, GitTool, ProgressTool, RunPipelineTool, RunProjectTool,
+    TaskTool, WebSearchTool,
 };
 use crate::{RalphError, Result};
 use adk_rust::agent::LlmAgentBuilder;
@@ -264,10 +264,7 @@ impl OrchestratorAgentBuilder {
 }
 
 /// Create all tools for the orchestrator.
-fn create_tools(
-    project_path: &PathBuf,
-    config: Option<RalphConfig>,
-) -> Result<Vec<Arc<dyn Tool>>> {
+fn create_tools(project_path: &PathBuf, config: Option<RalphConfig>) -> Result<Vec<Arc<dyn Tool>>> {
     let mut tools: Vec<Arc<dyn Tool>> = Vec::new();
 
     // Pipeline tool - for creating new projects
@@ -350,12 +347,11 @@ async fn create_model_from_config(config: &ModelConfig) -> Result<Arc<dyn Llm>> 
                         "GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set".into(),
                     )
                 })?;
-            let client = GeminiModel::new(api_key, &config.model_name).map_err(|e| {
-                RalphError::Model {
+            let client =
+                GeminiModel::new(api_key, &config.model_name).map_err(|e| RalphError::Model {
                     provider: "gemini".into(),
                     message: e.to_string(),
-                }
-            })?;
+                })?;
             Arc::new(client)
         }
         provider => {
@@ -438,7 +434,7 @@ mod tests {
 
         // Verify all required tools are created
         let tool_names: Vec<&str> = tools.iter().map(|t| t.name()).collect();
-        
+
         for required in REQUIRED_TOOLS {
             assert!(
                 tool_names.contains(required),

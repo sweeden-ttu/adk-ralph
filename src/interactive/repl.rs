@@ -200,7 +200,7 @@ impl InteractiveRepl {
     /// through the orchestrator, and displays responses.
     pub async fn run(&mut self) -> Result<()> {
         self.running = true;
-        
+
         // Display welcome message
         self.display_welcome().await;
 
@@ -237,7 +237,7 @@ impl InteractiveRepl {
 
         // Save session on exit
         self.save_session().await?;
-        
+
         // Display goodbye message
         self.display_goodbye();
 
@@ -247,11 +247,17 @@ impl InteractiveRepl {
     /// Display the welcome message.
     async fn display_welcome(&self) {
         println!();
-        println!("{}", "Welcome to Ralph Interactive Mode!".bright_cyan().bold());
+        println!(
+            "{}",
+            "Welcome to Ralph Interactive Mode!".bright_cyan().bold()
+        );
         println!("{}", "─".repeat(40).bright_black());
         println!();
         println!("I'm your AI development assistant. I can help you:");
-        println!("  {} Create new projects from descriptions", "•".bright_blue());
+        println!(
+            "  {} Create new projects from descriptions",
+            "•".bright_blue()
+        );
         println!("  {} Add features to existing projects", "•".bright_blue());
         println!("  {} Run and test your code", "•".bright_blue());
         println!("  {} Manage tasks and track progress", "•".bright_blue());
@@ -304,16 +310,17 @@ impl InteractiveRepl {
     fn read_input(&self) -> Result<String> {
         // Display prompt
         print!("{}", DEFAULT_PROMPT.bright_green());
-        io::stdout().flush().map_err(|e| {
-            RalphError::Internal(format!("Failed to flush stdout: {}", e))
-        })?;
+        io::stdout()
+            .flush()
+            .map_err(|e| RalphError::Internal(format!("Failed to flush stdout: {}", e)))?;
 
         // Read line
         let stdin = io::stdin();
         let mut line = String::new();
-        let bytes_read = stdin.lock().read_line(&mut line).map_err(|e| {
-            RalphError::Internal(format!("Failed to read input: {}", e))
-        })?;
+        let bytes_read = stdin
+            .lock()
+            .read_line(&mut line)
+            .map_err(|e| RalphError::Internal(format!("Failed to read input: {}", e)))?;
 
         // Check for EOF
         if bytes_read == 0 {
@@ -378,74 +385,98 @@ impl InteractiveRepl {
         println!("{}", "Ralph Interactive Mode - Help".bright_cyan().bold());
         println!("{}", "═".repeat(50).bright_black());
         println!();
-        
+
         // Commands section
         println!("{}", "Commands:".yellow().bold());
         println!("  {}         Show this help message", "help".cyan());
         println!("  {}         Exit the interactive session", "exit".cyan());
         println!("  {}        Clear the terminal screen", "clear".cyan());
-        println!("  {}       Show project status and artifacts", "status".cyan());
+        println!(
+            "  {}       Show project status and artifacts",
+            "status".cyan()
+        );
         println!("  {}      Show conversation history", "history".cyan());
         println!();
-        
+
         // Project creation examples
         println!("{}", "Creating Projects:".yellow().bold());
-        println!("  {} \"Create a CLI calculator in Rust\"", "•".bright_blue());
-        println!("  {} \"Build a REST API for a todo app in Python\"", "•".bright_blue());
+        println!(
+            "  {} \"Create a CLI calculator in Rust\"",
+            "•".bright_blue()
+        );
+        println!(
+            "  {} \"Build a REST API for a todo app in Python\"",
+            "•".bright_blue()
+        );
         println!("  {} \"Make a web scraper in Go\"", "•".bright_blue());
         println!();
-        
+
         // Feature addition examples
         println!("{}", "Adding Features:".yellow().bold());
         println!("  {} \"Add a history feature\"", "•".bright_blue());
         println!("  {} \"Add user authentication\"", "•".bright_blue());
         println!("  {} \"Add support for JSON output\"", "•".bright_blue());
         println!();
-        
+
         // Running and testing
         println!("{}", "Running & Testing:".yellow().bold());
         println!("  {} \"Run the project\"", "•".bright_blue());
         println!("  {} \"Test it\"", "•".bright_blue());
         println!("  {} \"Run with --help flag\"", "•".bright_blue());
         println!();
-        
+
         // Task management
         println!("{}", "Task Management:".yellow().bold());
         println!("  {} \"What tasks are left?\"", "•".bright_blue());
         println!("  {} \"Show me the next task\"", "•".bright_blue());
         println!("  {} \"Mark task 1 as complete\"", "•".bright_blue());
         println!();
-        
+
         // File operations
         println!("{}", "File Operations:".yellow().bold());
         println!("  {} \"Show me the main.rs file\"", "•".bright_blue());
         println!("  {} \"List all files in src/\"", "•".bright_blue());
         println!("  {} \"Update the README\"", "•".bright_blue());
         println!();
-        
+
         // Git operations
         println!("{}", "Version Control:".yellow().bold());
         println!("  {} \"Show git status\"", "•".bright_blue());
         println!("  {} \"Commit the changes\"", "•".bright_blue());
         println!("  {} \"Show the diff\"", "•".bright_blue());
         println!();
-        
+
         // General queries
         println!("{}", "General Queries:".yellow().bold());
         println!("  {} \"What time is it?\"", "•".bright_blue());
         println!("  {} \"What can you do?\"", "•".bright_blue());
         println!("  {} \"How do I use this?\"", "•".bright_blue());
         println!();
-        
+
         // Tips section
         println!("{}", "Tips:".yellow().bold());
-        println!("  {} Just describe what you want in natural language", "💡".bright_black());
-        println!("  {} Ralph will figure out the best way to help", "💡".bright_black());
-        println!("  {} Use Ctrl+D or type 'exit' to quit", "💡".bright_black());
-        println!("  {} Your session is saved automatically", "💡".bright_black());
-        println!("  {} Use 'ralph chat --resume' to continue later", "💡".bright_black());
+        println!(
+            "  {} Just describe what you want in natural language",
+            "💡".bright_black()
+        );
+        println!(
+            "  {} Ralph will figure out the best way to help",
+            "💡".bright_black()
+        );
+        println!(
+            "  {} Use Ctrl+D or type 'exit' to quit",
+            "💡".bright_black()
+        );
+        println!(
+            "  {} Your session is saved automatically",
+            "💡".bright_black()
+        );
+        println!(
+            "  {} Use 'ralph chat --resume' to continue later",
+            "💡".bright_black()
+        );
         println!();
-        
+
         println!("{}", "─".repeat(50).bright_black());
         println!();
     }
@@ -460,38 +491,50 @@ impl InteractiveRepl {
     /// Display current project status.
     async fn display_status(&self) {
         let session = self.session.read().await;
-        
+
         println!();
         println!("{}", "Project Status".bright_cyan().bold());
         println!("{}", "─".repeat(40).bright_black());
-        
+
         let ctx = &session.project_context;
         println!("  Path: {}", ctx.project_path.display().to_string().cyan());
-        
+
         if let Some(ref lang) = ctx.language {
             println!("  Language: {}", lang.cyan());
         }
-        
+
         println!();
         println!("{}", "Artifacts:".yellow());
         println!(
             "  PRD:    {}",
-            if ctx.has_prd { "✓".green() } else { "✗".red() }
+            if ctx.has_prd {
+                "✓".green()
+            } else {
+                "✗".red()
+            }
         );
         println!(
             "  Design: {}",
-            if ctx.has_design { "✓".green() } else { "✗".red() }
+            if ctx.has_design {
+                "✓".green()
+            } else {
+                "✗".red()
+            }
         );
         println!(
             "  Tasks:  {}",
-            if ctx.has_tasks { "✓".green() } else { "✗".red() }
+            if ctx.has_tasks {
+                "✓".green()
+            } else {
+                "✗".red()
+            }
         );
-        
+
         if let Some(ref phase) = ctx.current_phase {
             println!();
             println!("  Current Phase: {}", phase.to_string().cyan());
         }
-        
+
         println!();
         println!("{}", "Session:".yellow());
         println!("  Messages: {}", session.conversation_history.len());
@@ -502,11 +545,11 @@ impl InteractiveRepl {
     /// Display conversation history.
     async fn display_history(&self) {
         let session = self.session.read().await;
-        
+
         println!();
         println!("{}", "Conversation History".bright_cyan().bold());
         println!("{}", "─".repeat(40).bright_black());
-        
+
         if session.conversation_history.is_empty() {
             println!("  No messages yet.");
         } else {
@@ -516,14 +559,14 @@ impl InteractiveRepl {
                 } else {
                     "Ralph".bright_cyan()
                 };
-                
+
                 // Truncate long messages
                 let content = if msg.content.len() > 100 {
                     format!("{}...", &msg.content[..100])
                 } else {
                     msg.content.clone()
                 };
-                
+
                 println!("  {}. {}: {}", i + 1, role_display, content.bright_black());
             }
         }
@@ -559,18 +602,12 @@ impl InteractiveRepl {
             session
                 .conversation_history
                 .iter()
-                .map(|msg| {
-                    Content::new(&msg.role).with_text(&msg.content)
-                })
+                .map(|msg| Content::new(&msg.role).with_text(&msg.content))
                 .collect::<Vec<_>>()
         };
 
         // Create invocation context
-        let ctx = Arc::new(ReplContext::new(
-            input,
-            self.orchestrator.agent(),
-            history,
-        ));
+        let ctx = Arc::new(ReplContext::new(input, self.orchestrator.agent(), history));
 
         // Run the orchestrator agent
         let result = self.orchestrator.agent().run(ctx).await;
@@ -583,7 +620,7 @@ impl InteractiveRepl {
             Ok(mut stream) => {
                 let mut response_text = String::new();
                 let mut first_chunk = true;
-                
+
                 // Stream response incrementally
                 while let Some(event_result) = stream.next().await {
                     match event_result {
@@ -597,7 +634,7 @@ impl InteractiveRepl {
                                             println!("{}", "Ralph:".bright_cyan().bold());
                                             first_chunk = false;
                                         }
-                                        
+
                                         // Stream text incrementally
                                         self.stream_text(text);
                                         response_text.push_str(text);
@@ -629,7 +666,8 @@ impl InteractiveRepl {
                 }
             }
             Err(e) => {
-                self.output.error(&format!("Failed to process request: {}", e));
+                self.output
+                    .error(&format!("Failed to process request: {}", e));
             }
         }
     }
@@ -647,12 +685,12 @@ impl InteractiveRepl {
             }
             print!("  {}", line);
         }
-        
+
         // Handle trailing newline
         if text.ends_with('\n') {
             println!();
         }
-        
+
         // Flush to ensure immediate display
         let _ = io::stdout().flush();
     }
@@ -661,12 +699,12 @@ impl InteractiveRepl {
     fn display_response(&self, response: &str) {
         println!();
         println!("{}", "Ralph:".bright_cyan().bold());
-        
+
         // Display response with proper formatting
         for line in response.lines() {
             println!("  {}", line);
         }
-        
+
         println!();
     }
 
@@ -765,7 +803,7 @@ impl InteractiveReplBuilder {
     pub async fn build(self) -> Result<InteractiveRepl> {
         // Get or create config
         let config = self.config.unwrap_or_default();
-        
+
         // Determine project path
         let project_path = if self.project_path == PathBuf::from(".") {
             PathBuf::from(&config.project_path)
@@ -786,11 +824,9 @@ impl InteractiveReplBuilder {
 
         // Refresh project context
         let mut session = session;
-        session.project_context.refresh(
-            &config.prd_path,
-            &config.design_path,
-            &config.tasks_path,
-        );
+        session
+            .project_context
+            .refresh(&config.prd_path, &config.design_path, &config.tasks_path);
 
         // Store auto_approve preference
         if self.auto_approve {

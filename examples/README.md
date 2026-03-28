@@ -12,13 +12,18 @@ examples/
 │   ├── web-api-python.md        # REST API in Python
 │   ├── fullstack-typescript.md  # Full-stack TypeScript app
 │   ├── library-go.md            # Go library
-│   └── microservice-java.md     # Java microservice
+│   ├── microservice-java.md     # Java microservice
+│   └── farm-research-pipeline-rust.md  # Farm property + business research (ADK-Rust)
 └── outputs/                     # Expected output examples
     ├── cli-rust/
     │   ├── prd.md               # Generated PRD
     │   ├── design.md            # Generated design
     │   └── tasks.json           # Generated task list
-    └── web-api-python/
+    ├── web-api-python/
+    │   ├── prd.md
+    │   ├── design.md
+    │   └── tasks.json
+    └── farm-research-pipeline-rust/
         ├── prd.md
         ├── design.md
         └── tasks.json

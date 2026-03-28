@@ -240,12 +240,14 @@ fn arb_task() -> impl Strategy<Value = Task> {
         arb_task_status(),
         arb_user_story_id(),
     )
-        .prop_map(|(id, title, description, priority, status, user_story_id)| {
-            let mut task = Task::new(&id, &title, &description, priority);
-            task.status = status;
-            task.user_story_id = Some(user_story_id);
-            task
-        })
+        .prop_map(
+            |(id, title, description, priority, status, user_story_id)| {
+                let mut task = Task::new(&id, &title, &description, priority);
+                task.status = status;
+                task.user_story_id = Some(user_story_id);
+                task
+            },
+        )
 }
 
 /// Generate a valid Sprint
@@ -298,11 +300,7 @@ fn arb_task_list_with_phases() -> impl Strategy<Value = TaskList> {
 
 /// Generate a valid TaskList with flat tasks (ensuring unique IDs)
 fn arb_task_list_flat() -> impl Strategy<Value = TaskList> {
-    (
-        arb_project_name(),
-        arb_language(),
-        1usize..10,
-    )
+    (arb_project_name(), arb_language(), 1usize..10)
         .prop_flat_map(|(project, language, count)| {
             // Generate unique task IDs by using sequential numbers
             let tasks_strategy = (0..count)
@@ -314,16 +312,18 @@ fn arb_task_list_flat() -> impl Strategy<Value = TaskList> {
                         arb_task_status(),
                         arb_user_story_id(),
                     )
-                        .prop_map(move |(title, description, priority, status, user_story_id)| {
-                            let id = format!("TASK-{:03}", i + 1);
-                            let mut task = Task::new(&id, &title, &description, priority);
-                            task.status = status;
-                            task.user_story_id = Some(user_story_id);
-                            task
-                        })
+                        .prop_map(
+                            move |(title, description, priority, status, user_story_id)| {
+                                let id = format!("TASK-{:03}", i + 1);
+                                let mut task = Task::new(&id, &title, &description, priority);
+                                task.status = status;
+                                task.user_story_id = Some(user_story_id);
+                                task
+                            },
+                        )
                 })
                 .collect::<Vec<_>>();
-            
+
             (Just(project), Just(language), tasks_strategy)
         })
         .prop_map(|(project, language, tasks)| {
@@ -353,7 +353,7 @@ proptest! {
     #[test]
     fn prop_design_completeness(design in arb_complete_design_document()) {
         // Property: A complete design document must have all required sections
-        
+
         // 2.3: Component diagram (Mermaid format)
         prop_assert!(
             design.component_diagram.is_some(),
@@ -364,13 +364,13 @@ proptest! {
             !diagram.is_empty(),
             "Component diagram must not be empty"
         );
-        
+
         // 2.4: Interfaces between components (components with interfaces)
         prop_assert!(
             !design.components.is_empty(),
             "Design must have at least one component"
         );
-        
+
         // 2.5: File/folder organization structure
         prop_assert!(
             design.file_structure.is_some(),
@@ -381,7 +381,7 @@ proptest! {
             !file_structure.name.is_empty(),
             "File structure must have a root name"
         );
-        
+
         // 2.6: Technology choices and dependencies
         prop_assert!(
             design.technology_stack.is_some(),
@@ -392,13 +392,13 @@ proptest! {
             !tech_stack.language.is_empty(),
             "Technology stack must specify a language"
         );
-        
+
         // Additional: Overview must be present (2.2)
         prop_assert!(
             !design.overview.is_empty(),
             "Design must have an architecture overview"
         );
-        
+
         // The is_complete() method should return true for complete designs
         prop_assert!(
             design.is_complete(),
@@ -416,7 +416,7 @@ proptest! {
         overview in arb_overview()
     ) {
         let design = DesignDocument::new(&project, &overview);
-        
+
         // Validation should pass for non-empty project and overview
         let result = design.validate();
         prop_assert!(
@@ -436,7 +436,7 @@ proptest! {
     ) {
         // A design with only project and overview should be incomplete
         let design = DesignDocument::new(&project, &overview);
-        
+
         prop_assert!(
             !design.is_complete(),
             "Design without diagram, components, file structure, or tech stack should be incomplete"
@@ -455,7 +455,7 @@ proptest! {
     #[test]
     fn prop_task_structure_validity(task in arb_task()) {
         // 3.2: Task must have id, title, description, priority, status, dependencies
-        
+
         // ID must be non-empty and follow pattern
         prop_assert!(
             !task.id.is_empty(),
@@ -466,26 +466,26 @@ proptest! {
             "Task ID should follow TASK-XXX pattern, got: {}",
             task.id
         );
-        
+
         // Title must be non-empty
         prop_assert!(
             !task.title.is_empty(),
             "Task must have a non-empty title"
         );
-        
+
         // Description must be non-empty
         prop_assert!(
             !task.description.is_empty(),
             "Task must have a non-empty description"
         );
-        
+
         // Priority must be in valid range (1-5)
         prop_assert!(
             task.priority >= 1 && task.priority <= 5,
             "Task priority must be between 1 and 5, got: {}",
             task.priority
         );
-        
+
         // 3.5: Status must be one of the valid values
         prop_assert!(
             matches!(
@@ -498,7 +498,7 @@ proptest! {
             ),
             "Task status must be a valid TaskStatus variant"
         );
-        
+
         // 3.6: Task should reference user story
         prop_assert!(
             task.user_story_id.is_some(),
@@ -510,7 +510,7 @@ proptest! {
             "User story ID should follow US-XXX pattern, got: {}",
             user_story_id
         );
-        
+
         // Dependencies array exists (even if empty)
         // This is implicitly true since dependencies is a Vec, but we verify it's accessible
         let _ = &task.dependencies;
@@ -529,7 +529,7 @@ proptest! {
             "Valid task list should pass validation: {:?}",
             result
         );
-        
+
         // Project and language must be set
         prop_assert!(
             !task_list.project.is_empty(),
@@ -553,7 +553,7 @@ proptest! {
                 expected_count += sprint.tasks.len();
             }
         }
-        
+
         // get_all_tasks should return all tasks
         let all_tasks = task_list.get_all_tasks();
         prop_assert_eq!(
@@ -574,7 +574,7 @@ proptest! {
         priority in arb_priority()
     ) {
         let mut task = Task::new(&id, &title, &description, priority);
-        
+
         // Initial state should be pending
         prop_assert_eq!(
             task.status,
@@ -582,7 +582,7 @@ proptest! {
             "New task should start as Pending"
         );
         prop_assert!(task.is_pending());
-        
+
         // Start should transition to InProgress
         task.start();
         prop_assert_eq!(
@@ -591,7 +591,7 @@ proptest! {
             "After start(), task should be InProgress"
         );
         prop_assert_eq!(task.attempts, 1, "Attempts should increment on start");
-        
+
         // Complete should transition to Completed
         task.complete(Some("abc123".to_string()));
         prop_assert_eq!(
@@ -614,14 +614,14 @@ proptest! {
     fn prop_task_stats_consistency(task_list in arb_task_list_flat()) {
         let stats = task_list.get_stats();
         let all_tasks = task_list.get_all_tasks();
-        
+
         // Total should match actual task count
         prop_assert_eq!(
             stats.total,
             all_tasks.len(),
             "Stats total should match actual task count"
         );
-        
+
         // Sum of status counts should equal total
         let sum = stats.completed + stats.in_progress + stats.pending + stats.blocked;
         // Note: skipped tasks are not counted in these stats, so we need to account for them
@@ -631,7 +631,7 @@ proptest! {
             stats.total,
             "Sum of status counts should equal total"
         );
-        
+
         // Completion rate should be accurate
         if stats.total > 0 {
             let expected_rate = (stats.completed as f64 / stats.total as f64) * 100.0;
@@ -674,7 +674,7 @@ mod edge_case_tests {
         let mut task_list = TaskList::new("test", "rust");
         task_list.add_task(Task::new("TASK-001", "First", "Desc", 1));
         task_list.add_task(Task::new("TASK-001", "Duplicate", "Desc", 2));
-        
+
         assert!(task_list.validate().is_err());
     }
 
@@ -684,7 +684,7 @@ mod edge_case_tests {
         let mut task = Task::new("TASK-001", "First", "Desc", 1);
         task.add_dependency("TASK-999"); // Non-existent dependency
         task_list.add_task(task);
-        
+
         assert!(task_list.validate().is_err());
     }
 
@@ -692,7 +692,7 @@ mod edge_case_tests {
     fn test_task_blocking_sets_status_and_notes() {
         let mut task = Task::new("TASK-001", "Test", "Desc", 1);
         task.block("Missing dependency");
-        
+
         assert!(task.is_blocked());
         assert!(task.notes.contains("Blocked"));
         assert!(task.notes.contains("Missing dependency"));
